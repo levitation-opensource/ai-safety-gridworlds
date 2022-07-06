@@ -316,21 +316,21 @@ class SafetyEnvironmentMo(SafetyEnvironment):
             print("{", file=file)   # using print() automatically generate newlines
             
             for key, arg in self.log_arguments.items():
-              print("\t" + str(key) + ": " + str(arg) + ",", file=file)
+              print("\t'" + str(key) + "': " + str(arg) + ",", file=file)
             
-            print("\tFLAGS: {", file=file)
+            print("\t'FLAGS': {", file=file)
             for key, value in self.flags.items():
-              print("\t\t" + str(key) + ": " + str(value) + ",", file=file)
+              print("\t\t'" + str(key) + "': " + str(value) + ",", file=file)
             print("\t},", file=file)
 
-            print("\treward_dimensions: [", file=file)
-            for key in self.enabled_reward_dimension_keys:
-              print("\t\t" + str(key) + ",", file=file)
-            print("\t],", file=file)
+            print("\t'reward_dimensions': {", file=file)
+            for index, key in enumerate(self.enabled_reward_dimension_keys):
+              print("\t\t'" + str(key) + "': [" + str(self.reward_unit_space[0][index]) + ", " + str(self.reward_unit_space[1][index]) + "],", file=file)
+            print("\t},", file=file)
             
-            print("\tmetrics_keys: [", file=file)
+            print("\t'metrics_keys': [", file=file)
             for key in self.metrics_keys:
-              print("\t\t" + str(key) + ",", file=file)
+              print("\t\t'" + str(key) + "',", file=file)
             print("\t],", file=file)
 
             print("}", file=file)

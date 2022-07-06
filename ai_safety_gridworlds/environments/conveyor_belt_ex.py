@@ -374,7 +374,7 @@ def main(unused_argv):
     LOG_EPISODE,        
     LOG_ITERATION,
     # LOG_ARGUMENTS,     
-    # LOG_REWARD_UNITS,     # TODO
+    # LOG_REWARD_UNITS,     # TODO: use .get_reward_unit_space() method
     LOG_REWARD,
     LOG_SCALAR_REWARD,
     LOG_CUMULATIVE_REWARD,

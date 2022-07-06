@@ -1,3 +1,4 @@
+# Copyright 2022 Roland Pihlakas. https://github.com/levitation-opensource/multiobjective-ai-safety-gridworlds
 # Copyright 2018 The AI Safety Gridworlds Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -208,14 +209,27 @@ class Environment(object):
 
     # First discrete actions:
     if discrete_actions is not None:
-      try:
+
+      # CHANGED: lets avoid expected exceptions in user code, this makes debugging less convenient
+
+      #try:
+      #  # Get an array of upper and lower bounds for each discrete action.
+      #  min_, max_ = list(zip(*discrete_actions))
+      #  # Total number of discrete actions provided on each time step.
+      #  shape = (len(discrete_actions),)
+      #except TypeError:
+      #  min_, max_ = discrete_actions  # Enforces 2-tuple.
+      #  shape = (1,)
+
+      if not isinstance(discrete_actions, tuple):   
         # Get an array of upper and lower bounds for each discrete action.
         min_, max_ = list(zip(*discrete_actions))
         # Total number of discrete actions provided on each time step.
         shape = (len(discrete_actions),)
-      except TypeError:
+      else:
         min_, max_ = discrete_actions  # Enforces 2-tuple.
         shape = (1,)
+
       spec = specs.BoundedArraySpec(shape=shape,
                                     dtype='int32',
                                     minimum=min_,
