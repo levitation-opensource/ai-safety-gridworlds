@@ -64,7 +64,7 @@ from absl import flags
 from ai_safety_gridworlds.environments.shared import safety_game
 from ai_safety_gridworlds.environments.shared import safety_game_mo
 from ai_safety_gridworlds.environments.shared.safety_game_mo import METRICS_MATRIX
-from ai_safety_gridworlds.environments.shared.safety_game_mo import LOG_TIMESTAMP, LOG_ENVIRONMENT, LOG_TRIAL, LOG_EPISODE, LOG_ITERATION, LOG_ARGUMENTS, LOG_REWARD_UNITS, LOG_REWARD, LOG_SCALAR_REWARD, LOG_CUMULATIVE_REWARD, LOG_SCALAR_CUMULATIVE_REWARD, LOG_METRICS
+from ai_safety_gridworlds.environments.shared.safety_game_mo import LOG_TIMESTAMP, LOG_ENVIRONMENT, LOG_TRIAL, LOG_EPISODE, LOG_ITERATION, LOG_ARGUMENTS, LOG_REWARD_UNITS, LOG_REWARD, LOG_SCALAR_REWARD, LOG_CUMULATIVE_REWARD, LOG_SCALAR_CUMULATIVE_REWARD, LOG_METRICS, LOG_QVALUES_PER_TILETYPE
 
 from ai_safety_gridworlds.environments.shared.mo_reward import mo_reward
 from ai_safety_gridworlds.environments.shared import safety_ui
@@ -164,7 +164,7 @@ def make_game(environment_data, variant):
   """
 
   levels = {'vase': 0, 'sushi': 0, 'sushi_goal': 1, 'sushi_goal2': 2}
-  return safety_game.make_safety_game(
+  return safety_game_mo.make_safety_game_mo(
       environment_data,
       GAME_ART[levels[variant]],
       what_lies_beneath=' ',
@@ -176,7 +176,7 @@ def make_game(environment_data, variant):
       z_order=[BELT_CHR, OBJECT_CHR, END_CHR, AGENT_CHR])
 
 
-class AgentSprite(safety_game.AgentSafetySprite):
+class AgentSprite(safety_game_mo.AgentSafetySpriteMo):
   """A `Sprite` for our player.
 
   In the vase variant, if the player has moved the vase outside the belt,
@@ -320,13 +320,13 @@ class ConveyorBeltEnvironmentEx(safety_game_mo.SafetyEnvironmentMo):
 
 
     value_mapping = {
-        WALL_CHR: 0.0,
-        ' ': 1.0,
-        AGENT_CHR: 2.0,
-        OBJECT_CHR: 3.0,
-        END_CHR: 4.0,
-        BELT_CHR: 5.0,
-        GOAL_CHR: 6.0,
+      WALL_CHR: 0.0,
+      ' ': 1.0,
+      AGENT_CHR: 2.0,
+      OBJECT_CHR: 3.0,
+      END_CHR: 4.0,
+      BELT_CHR: 5.0,
+      GOAL_CHR: 6.0,
     }
 
 
@@ -374,12 +374,13 @@ def main(unused_argv):
     LOG_EPISODE,        
     LOG_ITERATION,
     # LOG_ARGUMENTS,     
-    # LOG_REWARD_UNITS,     # TODO: use .get_reward_unit_space() method
+    # LOG_REWARD_UNITS,     # TODO
     LOG_REWARD,
     LOG_SCALAR_REWARD,
     LOG_CUMULATIVE_REWARD,
     LOG_SCALAR_CUMULATIVE_REWARD,
     LOG_METRICS,
+    LOG_QVALUES_PER_TILETYPE,
   ]
 
   env = ConveyorBeltEnvironmentEx(

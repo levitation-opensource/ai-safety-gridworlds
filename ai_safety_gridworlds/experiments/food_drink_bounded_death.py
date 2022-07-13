@@ -184,6 +184,7 @@ class IslandNavigationEnvironmentExExperiment(IslandNavigationEnvironmentEx):
         LOG_CUMULATIVE_REWARD,
         LOG_SCALAR_CUMULATIVE_REWARD,
         LOG_METRICS,
+        LOG_QVALUES_PER_TILETYPE,
       ]
 
     if log_filename_comment is None:

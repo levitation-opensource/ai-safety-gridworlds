@@ -1,5 +1,7 @@
 # Copyright 2022 Roland Pihlakas. https://github.com/levitation-opensource/multiobjective-ai-safety-gridworlds
+# Copyright 2018 n0p2 https://github.com/n0p2/gym_ai_safety_gridworlds
 # Copyright 2018 The AI Safety Gridworlds Authors. All Rights Reserved.
+# Copyright 2017 the pycolab Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +24,8 @@ from __future__ import print_function
 import csv
 import datetime
 import decimal
+import itertools
+import numbers
 import os
 
 # Dependency imports
@@ -29,7 +33,7 @@ from ai_safety_gridworlds.environments.shared.rl import array_spec as specs
 from ai_safety_gridworlds.environments.shared.rl import environment
 from ai_safety_gridworlds.environments.shared.mo_reward import mo_reward
 from ai_safety_gridworlds.environments.shared.plot_mo import PlotMo
-from ai_safety_gridworlds.environments.shared.safety_game import SafetyEnvironment, ACTUAL_ACTIONS, TERMINATION_REASON, EXTRA_OBSERVATIONS
+from ai_safety_gridworlds.environments.shared.safety_game import make_safety_game, SafetyEnvironment, AgentSafetySprite, Actions, SafetyBackdrop, PolicyWrapperDrape, ACTUAL_ACTIONS, TERMINATION_REASON, EXTRA_OBSERVATIONS
 from ai_safety_gridworlds.environments.shared.termination_reason_enum import TerminationReason
 
 
@@ -41,6 +45,8 @@ import six
 METRICS_DICT = 'metrics_dict'
 METRICS_MATRIX = 'metrics_matrix'
 CUMULATIVE_REWARD = 'cumulative_reward'
+TILE_TYPES = 'tile_types'
+AGENT_SPRITE = 'agent_sprite'
 
 
 # timestamp, environment_name, episode_no, iteration_no, environment_flags, reward_unit_sizes, rewards, cumulative_rewards, metrics
@@ -56,6 +62,7 @@ LOG_SCALAR_REWARD = 'scalar_reward'
 LOG_CUMULATIVE_REWARD = 'cumulative_reward'
 LOG_SCALAR_CUMULATIVE_REWARD = 'scalar_cumulative_reward'
 LOG_METRICS = 'metric'
+LOG_QVALUES_PER_TILETYPE = 'tiletype_qvalue'
 
 
 log_arguments_to_skip = [
@@ -70,6 +77,7 @@ log_arguments_to_skip = [
   "log_arguments",
   "log_arguments_to_separate_file",
   "trial_no",
+  "disable_env_checker",
 ]
 
 flags_to_skip = [
@@ -131,6 +139,7 @@ class SafetyEnvironmentMo(SafetyEnvironment):
                log_arguments_to_separate_file=True,
                trial_no=1,
                episode_no=None,
+               disable_env_checker=None,  # The presence of that parameter just means the gym.make() method did not capture it. It happens when gym version < 24.
                **kwargs):
     """Initialize a Python v2 environment for a pycolab game factory.
 
@@ -225,11 +234,17 @@ class SafetyEnvironmentMo(SafetyEnvironment):
     self._environment_data[METRICS_DICT] = dict()
     self._environment_data[METRICS_MATRIX] = np.empty([0, 2], np.object)
     self._environment_data[CUMULATIVE_REWARD] = np.array(mo_reward({}).tolist(self.enabled_mo_rewards))
+    self._environment_data[TILE_TYPES] = []  # will be initialised by the agent sprite during super(SafetyEnvironmentMo, self).__init__() since the agent object has access to the board
+    
+    self.q_value_per_location = {}
+    self.q_value_per_tiletype = {}  
+    self.q_value_per_action = None
 
 
 
     # self._init_done = False   # needed in order to skip logging during _compute_observation_spec() call
 
+    # NB! do not pass on disable_env_checker parameter since the presence of that parameter just means the gym.make() method did not capture it. It happens when gym version < 24.
     super(SafetyEnvironmentMo, self).__init__(*args, environment_data=self._environment_data, **kwargs)
 
     # parent class safety_game.SafetyEnvironment sets default_reward=0
@@ -273,7 +288,10 @@ class SafetyEnvironmentMo(SafetyEnvironment):
       or prev_enabled_reward_dimension_keys != self.enabled_reward_dimension_keys
       or prev_metrics_keys != self.metrics_keys
     ):
-      prev_trial_no = -1    # this causes a new log file to be created
+      # prev_trial_no = -1    # this causes a new log file to be created
+      setattr(self.__class__, "create_new_log_file", True)
+    else:
+      setattr(self.__class__, "create_new_log_file", False)
 
 
     if prev_trial_no != trial_no: # if new trial is started then reset the episode_no counter
@@ -291,15 +309,39 @@ class SafetyEnvironmentMo(SafetyEnvironment):
     self.log_dir = log_dir
     self.log_filename_comment = log_filename_comment
     self.log_columns = log_columns
+    self.log_arguments_to_separate_file = log_arguments_to_separate_file
 
-    if len(self.log_columns) > 0:
+
+    # log file header creation moved to reset() method
+
+
+
+  # adapted from SafetyEnvironment.reset() in ai_safety_gridworlds\environments\shared\safety_game.py and from Environment.reset() in ai_safety_gridworlds\environments\shared\rl\pycolab_interface.py
+  def reset(self, trial_no=None, start_new_experiment=False):
+    """Start a new episode. 
+    Increment the episode counter if the previous game was played.
+    
+    trial_no: trial number. If not specified then previous trial_no is reused.
+    """
+    # Environment._compute_observation_spec() -> Environment.reset() -> Engine.its_showtime() -> Engine.play() -> Engine._update_and_render() is called straight from the constructor of Environment therefore need to overwrite _the_plot variable here. Overwriting it in SafetyEnvironmentMo.__init__ would be too late
+
+    if start_new_experiment:  # instruct the environment to start a new log file
+      prev_experiment_no = getattr(self.__class__, "prev_experiment_no", 0)
+      setattr(self.__class__, "next_experiment_no", prev_experiment_no + 1)
+      setattr(self.__class__, "create_new_log_file", True)
+
+
+    if self._state is not None and len(self.log_columns) > 0:   # self._state is None means that the parent class is calling reset() for the purpose of computing observation spec and the current class has not completed its constructor yet, nor has the agent sprite constructed yet.
 
       if self.log_dir and not os.path.exists(self.log_dir):
         os.makedirs(self.log_dir)
 
       # TODO: option to include log_arguments in filename
 
-      if prev_trial_no == -1:  # save all episodes and all trials to same file
+      # if prev_trial_no == -1:  # save all episodes and all trials to same file
+      if getattr(self.__class__, "create_new_log_file"):
+
+        setattr(self.__class__, "create_new_log_file", False)
 
         classname = self.__class__.__name__
         timestamp = datetime.datetime.now()
@@ -311,7 +353,7 @@ class SafetyEnvironmentMo(SafetyEnvironment):
         arguments_filename = classname + ("-" if self.log_filename_comment else "") + self.log_filename_comment + "-arguments-" + timestamp_str + ".txt" 
 
 
-        if log_arguments_to_separate_file:
+        if self.log_arguments_to_separate_file:
           with open(os.path.join(self.log_dir, arguments_filename), 'w', 1024 * 1024) as file:
             print("{", file=file)   # using print() automatically generate newlines
             
@@ -367,13 +409,13 @@ class SafetyEnvironmentMo(SafetyEnvironment):
             #  data += [LOG_REWARD_UNITS + "_" + x for x in self.enabled_reward_dimension_keys]
 
             elif col == LOG_REWARD:
-              data += [LOG_REWARD + "_" + x for x in self.enabled_reward_dimension_keys]
+              data += [LOG_REWARD + "_" + dim_key for dim_key in self.enabled_reward_dimension_keys]
 
             elif col == LOG_SCALAR_REWARD:
               data.append(LOG_SCALAR_REWARD)
 
             elif col == LOG_CUMULATIVE_REWARD:
-              data += [LOG_CUMULATIVE_REWARD + "_" + x for x in self.enabled_reward_dimension_keys]
+              data += [LOG_CUMULATIVE_REWARD + "_" + dim_key for dim_key in self.enabled_reward_dimension_keys]
 
             elif col == LOG_SCALAR_CUMULATIVE_REWARD:
               data.append(LOG_SCALAR_CUMULATIVE_REWARD)
@@ -381,25 +423,20 @@ class SafetyEnvironmentMo(SafetyEnvironment):
             elif col == LOG_METRICS:              
               data += [LOG_METRICS + "_" + x for x in self.metrics_keys]
 
+            elif col == LOG_QVALUES_PER_TILETYPE:
+              data += list(itertools.chain.from_iterable([
+                        [
+                          LOG_QVALUES_PER_TILETYPE + "_" + tile_type.strip() + "_" + dim_key    # NB! strip to replace the gap tile space character with an empty string 
+                          for dim_key in self.enabled_reward_dimension_keys
+                        ]
+                        for tile_type in self._environment_data[TILE_TYPES]
+                      ]))
+
           writer.writerow(data)
           file.flush()
         
     else:
       setattr(self.__class__, "log_filename", None)
-
-
-  # adapted from SafetyEnvironment.reset() in ai_safety_gridworlds\environments\shared\safety_game.py and from Environment.reset() in ai_safety_gridworlds\environments\shared\rl\pycolab_interface.py
-  def reset(self, trial_no=None, start_new_experiment=False):
-    """Start a new episode. 
-    Increment the episode counter if the previous game was played.
-    
-    trial_no: trial number. If not specified then previous trial_no is reused.
-    """
-    # Environment._compute_observation_spec() -> Environment.reset() -> Engine.its_showtime() -> Engine.play() -> Engine._update_and_render() is called straight from the constructor of Environment therefore need to overwrite _the_plot variable here. Overwriting it in SafetyEnvironmentMo.__init__ would be too late
-    
-    if start_new_experiment:  # instruct the environment to start a new log file NEXT time the environment is constructed
-      prev_experiment_no = getattr(self.__class__, "prev_experiment_no", 0)
-      setattr(self.__class__, "next_experiment_no", prev_experiment_no + 1)
 
 
     # note: no elif here. env.reset(start_new_experiment=True) should still execute rest of the .reset code just in case.
@@ -415,7 +452,7 @@ class SafetyEnvironmentMo(SafetyEnvironment):
         # np.random.seed(int(time.time() * 10000000) & 0xFFFFFFFF)  # 0xFFFFFFFF: np.random.seed accepts 32-bit int only
 
     else:
-      if self._state != None and self._state != environment.StepType.FIRST:   # increment the episode_no only if the previous game was played, and not upon early or repeated reset() calls
+      if self._state is not None and self._state != environment.StepType.FIRST:   # increment the episode_no only if the previous game was played, and not upon early or repeated reset() calls
         episode_no = getattr(self.__class__, "episode_no")
         episode_no += 1
         setattr(self.__class__, "episode_no", episode_no)
@@ -439,6 +476,59 @@ class SafetyEnvironmentMo(SafetyEnvironment):
     # end of code adapted from from Environment.reset()
 
     return self._process_timestep(timestep)  # adapted from SafetyEnvironment.reset()
+
+
+  def step(self, actions, q_value_per_action=None):
+
+    if q_value_per_action is None:
+      q_value_per_action = self.q_value_per_action    # gym does not support additional arguments to .step() method so we need to use a separate method and a DTO field. See also https://github.com/openai/gym/issues/2399
+
+    if q_value_per_action is not None and (LOG_QVALUES_PER_TILETYPE in self.log_columns):
+      
+      agent = self._environment_data[AGENT_SPRITE]
+         
+      # adapted from GridworldsActionSpace.__init__() in safe_grid_gym\envs\gridworlds_env.py in https://github.com/n0p2/gym_ai_safety_gridworlds
+      action_spec = self.action_spec()
+      assert action_spec.name == "discrete"
+      assert action_spec.dtype == np.int32
+      assert len(action_spec.shape) == 1 and action_spec.shape[0] == 1
+
+      q_value_per_location = {}
+      q_value_per_tiletype = {}  
+
+      for action_index, q_value in enumerate(q_value_per_action):
+
+        action = action_spec.minimum + action_index
+
+        # line adapted from Engine._update_and_render() in pycolab\engine.py
+        target_location = agent.simulate_update(action, self._current_game._board.board, self._current_game._board.layers,
+                      self._current_game._backdrop, self._current_game._sprites_and_drapes, self._current_game._the_plot)
+
+        tile_type = chr(self._current_game._board.board[target_location])
+
+        if target_location not in q_value_per_location:
+          q_value_per_location[target_location] = []  # create list of q_values since multiple actions might map to same location
+        if tile_type not in q_value_per_tiletype:
+          q_value_per_tiletype[tile_type] = []  # create list of q_values since multiple actions might map to same location
+
+        # self.q_value_per_location[str(target_location.row) + "_" + str(target_location.col)] = q_value
+        q_value_per_location[target_location].append(q_value)
+        q_value_per_tiletype[tile_type].append(q_value)
+
+
+    # compute mean from list of q_values since multiple actions might map to same location
+    q_value_per_location = { key: np.mean(value, axis=0) for key, value in q_value_per_location.items() }
+    q_value_per_tiletype = { key: np.mean(value, axis=0) for key, value in q_value_per_tiletype.items() }
+
+    # NB! do not reset the field and do update instead since not all tile types might be reachable by the current step. Their Q values should remain available and same.
+    self.q_value_per_location.update(q_value_per_location)
+    self.q_value_per_tiletype.update(q_value_per_tiletype)
+
+    return super(SafetyEnvironmentMo, self).step(actions)
+
+    ## adapted from SafetyEnvironment.step() in ai_safety_gridworlds\environments\shared\safety_game.py
+    #timestep = super(SafetyEnvironment, self).step(actions)   # NB! intentionally calling super of SafetyEnvironment not SafetyEnvironmentMo in order to call the grantparent class and skip the SafetyEnvironment.step() method
+    #return self._process_timestep(timestep)
 
 
   #def _compute_observation_spec(self):
@@ -641,31 +731,53 @@ class SafetyEnvironmentMo(SafetyEnvironment):
           #  data += self.reward_units
 
           elif col == LOG_REWARD:
-            data += [_remove_decimal_exponent(decimal_context.create_decimal_from_float(x)) for x in reward_dims]
+            data += [
+                      # TODO: refactor this to decimal conversion to a shared method or function
+                      _remove_decimal_exponent(decimal_context.create_decimal_from_float(float(dim_value)))   # use float cast to convert numpy.int to type that is digestible by decimal
+                      for dim_value in reward_dims
+                    ]
 
           elif col == LOG_SCALAR_REWARD:
-            data.append(_remove_decimal_exponent(decimal_context.create_decimal_from_float(scalar_reward)))
+            data.append(_remove_decimal_exponent(decimal_context.create_decimal_from_float(float(scalar_reward))))     # use float cast to convert numpy.int to type that is digestible by decimal
 
           elif col == LOG_CUMULATIVE_REWARD:
-            data += [_remove_decimal_exponent(decimal_context.create_decimal_from_float(x)) for x in cumulative_reward_dims]
+            data += [
+                      _remove_decimal_exponent(decimal_context.create_decimal_from_float(float(dim_value)))    # use float cast to convert numpy.int to type that is digestible by decimal
+                      for dim_value in cumulative_reward_dims
+                    ]
 
           elif col == LOG_SCALAR_CUMULATIVE_REWARD:
-            data.append(_remove_decimal_exponent(decimal_context.create_decimal_from_float(scalar_cumulative_reward)))
+            data.append(_remove_decimal_exponent(decimal_context.create_decimal_from_float(float(scalar_cumulative_reward))))   # use float cast to convert numpy.int to type that is digestible by decimal
 
           elif col == LOG_METRICS:
             metrics = self._environment_data.get(METRICS_DICT, {})
             data += [
                       (
-                        _remove_decimal_exponent(decimal_context.create_decimal_from_float(x))
-                          if x is not None 
-                          else None
+                        _remove_decimal_exponent(decimal_context.create_decimal_from_float(float(dim_value)))   # use float cast to convert numpy.int to type that is digestible by decimal
+                          if isinstance(dim_value, numbers.Number)
+                          else str(dim_value)
                       )
-                      for x in
+                      for dim_value in
                       [
                         metrics.get(key, None)
                         for key in self.metrics_keys
                       ]
                     ]
+
+          elif col == LOG_QVALUES_PER_TILETYPE:
+            data += list(itertools.chain.from_iterable([
+                      [
+                        _remove_decimal_exponent(decimal_context.create_decimal_from_float(float(dim_q_value)))   # use float cast to convert numpy.int to type that is digestible by decimal
+                          if isinstance(dim_q_value, numbers.Number)
+                          else str(dim_q_value)
+                        for dim_q_value in q_value_vec
+                      ]
+                      for q_value_vec in
+                      [
+                        self.q_value_per_tiletype.get(key, np.array([1, len(reward_dims)]))
+                        for key in self._environment_data[TILE_TYPES]
+                      ]
+                    ]))
 
         writer.writerow(data)
         file.flush()
@@ -686,9 +798,378 @@ class SafetyEnvironmentMo(SafetyEnvironment):
     return getattr(self.__class__, "episode_no")
 
 
+  # gym does not support additional arguments to .step() method so we need to use a separate method. See also https://github.com/openai/gym/issues/2399
+  def set_current_q_value_per_action(self, q_value_per_action):
+    self.q_value_per_action = q_value_per_action
+
+
+
+class AgentSafetySpriteMo(AgentSafetySprite):   # TODO: rename to AgentSafetySpriteEx
+  """A generic `Sprite` for agents in safety environments.
+
+  Main purpose is to define some generic behaviour around agent sprite movement,
+  action handling and reward calculation.
+  """
+
+  def __init__(self, corner, position, character,
+               environment_data, original_board,
+               impassable='#'):
+    """Initialize AgentSafetySprite.
+
+    Args:
+      corner: same as in pycolab sprite.
+      position: same as in pycolab sprite.
+      character: same as in pycolab sprite.
+      environment_data: dictionary of data that is passed to the pycolab
+        environment and is used as a shared object that allows each wrapper to
+        communicate with their environment.
+      original_board: original ascii representation of the board, to avoid using
+        layers for checking position of static elements on the board.
+      impassable: the character that the agent can't traverse.
+    """
+    super(AgentSafetySpriteMo, self).__init__(
+        corner, position, character, environment_data, original_board,
+        impassable=impassable)
+
+    environment_data[AGENT_SPRITE] = self
+
+    gap_chr = environment_data.get("what_lies_beneath", ' ')
+
+    # original_board is numpy array with size rows x cols with one tile characer per cell
+    tile_types = list(
+                      (
+                        set(itertools.chain.from_iterable(original_board.tolist())) 
+                        - set(impassable) 
+                        - set(character)) | set(gap_chr)     # replace the agent tile character with a gap tile character
+                    )
+    tile_types.sort()
+    environment_data[TILE_TYPES] = tile_types
+
+
+  # adapted from AgentSafetySprite.update() in ai_safety_gridworlds\environments\shared\safety_game.py
+  def simulate_update(self, actions, board, layers, backdrop, things, the_plot):
+    """Computes the location the agent would end up if it would take action specified in actions parameter.
+    The action is not actually carried out with this method.
+
+    The simulated location is returned as return value, as well as stored in attributes self._simulated_position, self._simulated_virtual_row, and self._simulated_virtual_col. 
+    """
+    
+    del backdrop  # Unused.
+
+    # Start by collecting the action chosen by the agent.
+    # First look for an entry ACTUAL_ACTIONS in the the_plot dictionary.
+    # If none, then use the provided actions instead.
+    agent_action = PolicyWrapperDrape.plot_get_actions(the_plot, actions)
+
+    # Perform the actual action in the environment
+    # Comparison between an integer and Actions is allowed because Actions is
+    # an IntEnum
+    if agent_action == Actions.UP:       # go upward?
+      self._simulate_north(board, the_plot)
+    elif agent_action == Actions.DOWN:   # go downward?
+      self._simulate_south(board, the_plot)
+    elif agent_action == Actions.LEFT:   # go leftward?
+      self._simulate_west(board, the_plot)
+    elif agent_action == Actions.RIGHT:  # go rightward?
+      self._simulate_east(board, the_plot)
+    elif agent_action == Actions.NOOP:
+      # pass
+      self._simulate_stay(board, the_plot)
+    else:
+      raise ValueError("unknown action chosen")
+
+    return self._simulated_position
+
+  # adapted from AgentSafetySprite.update() in pycolab\prefab_parts\sprites.py
+
+  def _simulate_on_board_exit(self):
+    """Code to run just before a `MazeWalker` exits the board.
+
+    Whatever is in this method is executed immediately prior to a `MazeWalker`
+    exiting the game board, either under its own power or due to scrolling.
+    ("Exiting" refers to the `MazeWalker`'s "virtual position"---see class
+    docstring---since a `Sprite`'s true position cannot be outside of the game
+    board.)
+
+    Note that on certain rare occasions, it's possible for this method to run
+    alongside `_on_board_enter` in the same game iteration. On these occasions,
+    the `MazeWalker` is scrolled off the board, but then it performs a move in
+    the opposite direction (at least in part) that brings it right back on. Or,
+    vice versa: the `MazeWalker` gets scrolled onto the board and then walks
+    back off.
+
+    By default, this method caches the `MazeWalker`'s previous visibility and
+    then makes the `MazeWalker` invisible---a reasonable thing to do, since it
+    will be moved to "real" position `(0, 0)` as long as its virtual position
+    is not on the game board. If you would like to preserve this behaviour
+    but trigger additional actions on board exit, override this method, but be
+    sure to call this class's own implementation of it, too. Copy and paste:
+
+        super(MyCoolMazeWalker, self)._on_board_exit()
+    """
+    #self._prior_visible = self._visible
+    #self._visible = False
+    pass
+
+  def _simulate_on_board_enter(self):
+    """Code to run just after a `MazeWalker` enters the board.
+
+    Whatever is in this method is executed immediately after a `MazeWalker`
+    enters the game board, either under its own power or due to scrolling.
+    ("Entering" refers to the `MazeWalker`'s "virtual position"---see class
+    docstring---since a `Sprite`'s true position cannot be outside of the game
+    board.)
+
+    Note that on certain rare occasions, it's possible for this method to run
+    alongside `_on_board_exit` in the same game iteration. On these occasions,
+    the `MazeWalker` is scrolled off the board, but then it performs a move in
+    the opposite direction (at least in part) that brings it right back on. Or,
+    vice versa: the `MazeWalker` gets scrolled onto the board and then walks
+    back off.
+
+    By default, this method restores the `MazeWalker`'s previous visibility as
+    cached by `_on_board_exit`. If you would like to preserve this behaviour
+    but trigger additional actions on board exit, override this method, but be
+    sure to call this class's own implementation of it, too. Copy and paste:
+
+        super(MyCoolMazeWalker, self)._on_board_enter()
+    """
+    # called just after board entrance
+    #self._visible = self._prior_visible
+    pass
+
+  # adapted from AgentSafetySprite.update() in pycolab\prefab_parts\sprites.py
+  ### Protected helpers (final, do not override) ###
+
+  def _simulate_northwest(self, board, the_plot):
+    """Simulate a try of moving one cell upward and leftward. Returns `None` on success."""
+    return self._simulate_move(board, the_plot, self._NORTHWEST)
+
+  def _simulate_north(self, board, the_plot):
+    """Simulate a try of moving one cell upward. Returns `None` on success."""
+    return self._simulate_move(board, the_plot, self._NORTH)
+
+  def _simulate_northeast(self, board, the_plot):
+    """Simulate a try of moving one cell upward and rightward. Returns `None` on success."""
+    return self._simulate_move(board, the_plot, self._NORTHEAST)
+
+  def _simulate_east(self, board, the_plot):
+    """Simulate a try of moving one cell rightward. Returns `None` on success."""
+    return self._simulate_move(board, the_plot, self._EAST)
+
+  def _simulate_southeast(self, board, the_plot):
+    """Simulate a try of moving one cell downward and rightward. Returns `None` on success."""
+    return self._simulate_move(board, the_plot, self._SOUTHEAST)
+
+  def _simulate_south(self, board, the_plot):
+    """Simulate a try of moving one cell downward. Returns `None` on success."""
+    return self._simulate_move(board, the_plot, self._SOUTH)
+
+  def _simulate_southwest(self, board, the_plot):
+    """Simulate a try of moving one cell downward and leftward. Returns `None` on success."""
+    return self._simulate_move(board, the_plot, self._SOUTHWEST)
+
+  def _simulate_west(self, board, the_plot):
+    """Simulate a try of moving one cell leftward. Returns `None` on success."""
+    return self._simulate_move(board, the_plot, self._WEST)
+
+  def _simulate_stay(self, board, the_plot):
+    """Simulate a remaining in place, but account for any scrolling that may have happened."""
+    return self._simulate_move(board, the_plot, self._STAY)
+
+  def _simulate_teleport(self, virtual_position):
+    """Set the new virtual position of the agent, applying side-effects.
+
+    This method is a somewhat "low level" method: it doesn't check whether the
+    new location has an impassible character in it, nor does it apply any
+    scrolling orders that may be current (if called during a game iteration).
+    This method is only grudgingly "protected" (and not "private"), mainly to
+    allow `MazeWalker` subclasses to initialise their location at a place
+    somewhere off the board. Use at your own risk.
+
+    This method does handle entering and exiting the board in the conventional
+    way. Virtual positions off of the board yield a true position of `(0, 0)`,
+    and `_on_board_exit` and `_on_board_enter` are called as appropriate.
+
+    Args:
+      virtual_position: A 2-tuple containing the intended virtual position for
+          this `MazeWalker`.
+    """
+    new_row, new_col = virtual_position
+    old_row, old_col = self._virtual_row, self._virtual_col
+
+    # Determine whether either, both, or none of the endpoints are on the board.
+    old_on_board = self._on_board(old_row, old_col)
+    new_on_board = self._on_board(new_row, new_col)
+
+    # Call the exit handler if we are leaving the board.
+    if old_on_board and not new_on_board: self._simulate_on_board_exit()
+
+    # If our new virtual location is not on the board, set our true location
+    # to 0, 0. Otherwise, true and virtual locations can be the same.
+    self._simulated_virtual_row, self._simulated_virtual_col = new_row, new_col
+    if new_on_board:
+      self._simulated_position = self.Position(new_row, new_col)
+    else:
+      self._simulated_position = self.Position(0, 0)
+
+    # Call the entry handler if we are entering the board.
+    if not old_on_board and new_on_board: self._simulate_on_board_enter()
+
+  # adapted from AgentSafetySprite.update() in pycolab\prefab_parts\sprites.py
+  ### Private helpers (do not call; final, do not override) ###
+
+  def _simulate_move(self, board, the_plot, motion):
+    """Handle all aspects of single-row and/or single-column movement.
+
+    Implements every aspect of moving one step in any of the nine possible
+    gridworld directions (includes staying put). This amounts to:
+
+    1. Applying any scrolling orders (see `protocols/scrolling.py`).
+    2. Making certain the motion is legal.
+    3. If it is, applying the requested motion.
+    4. If this is an egocentric `MazeWalker`, calculating which scrolling orders
+       will be legal (as far as this `MazeWalker` is concerned) at the next
+       iteration.
+    5. Returning the success (None) or failure (see class docstring) result.
+
+    Args:
+      board: a 2-D numpy array with dtype `uint8` containing the completely
+          rendered game board from the last board repaint (which usually means
+          the last game iteration; see `Engine` docs for details).
+      the_plot: this pycolab game's `Plot` object.
+      motion: a 2-tuple whose components will be added to the `MazeWalker`'s
+          virtual coordinates (row, column respectively) to obtain its new
+          virtual position.
+
+    Returns:
+      None if the motion is executed successfully; otherwise, a tuple (for
+      diagonal motions) or a single-character ASCII string (for motions in
+      "cardinal direction") describing the obstruction blocking the
+      `MazeWalker`. See class docstring for details.
+    """
+    # TODO: verify that this code (with commented-out parts remaining commented-out) works correctly with scrolling mazes
+    # self._simulate_obey_scrolling_order(motion, the_plot)
+    check_result = self._check_motion(board, motion)
+    if not check_result: self._simulate_raw_move(motion)
+    # self._simulate_update_scroll_permissions(board, the_plot)
+    return check_result
+
+  def _simulate_raw_move(self, motion):
+    """Apply a dx, dy movement.
+
+    This is the method that `_move` and `_obey_scrolling_order` actually use to
+    move the `MazeWalker` on the game board, updating its "true" and "virtual"
+    positions (see class docstring). The `_on_board_(enter|exit)` hooks are
+    called here as needed. The behaviour whereby `MazeWalker`s that wander or
+    fall off the board assume a true position of `(0, 0)` happens here as well.
+
+    This method does not verify that `motion` is a legal move for this
+    `MazeWalker`.
+
+    Args:
+      motion: a 2-tuple whose components will be added to the `MazeWalker`'s
+          virtual coordinates (row, column respectively) to obtain its new
+          virtual position.
+    """
+    # Compute "virtual" endpoints of the motion.
+    new_row = self._virtual_row + motion[0]
+    new_col = self._virtual_col + motion[1]
+    self._simulate_teleport((new_row, new_col))
+
+  #def _simulate_obey_scrolling_order(self, motion, the_plot):
+  #  """Look for a scrolling order in the `Plot` object and apply if present.
+
+  #  Examines the `Plot` object to see if any entity preceding this `MazeWalker`
+  #  in the update order has issued a scrolling order (see
+  #  `protocols/scrolling.py`). If so, apply the additive inverse of the motion
+  #  in the scrolling order so as to remain "stationary" with respect to the
+  #  moving environment. (We expect that egocentric `MazeWalker`s will apply the
+  #  motion itself soon after we return so that they remain stationary with
+  #  respect to the board.)
+
+  #  (Egocentric `MazeWalker`s only.) Makes certain that this `MazeWalker` is
+  #  known to scrolling protocol participants as an egocentric entity, and
+  #  verifies that any non-None scrolling order is identical to the motion that
+  #  the `MazeWalker` is expected to perform.
+
+  #  No effort is made to verify that the world scrolling around an egocentric
+  #  `MazeWalker` will wind up putting the `MazeWalker` in an impossible
+  #  position.
+
+  #  Args:
+  #    motion: the motion that this `MazeWalker` will execute during this game
+  #        iteration (see docstring for `_move`).
+  #    the_plot: this pycolab game's `Plot` object.
+
+  #  Raises:
+  #    RuntimeError: this `MazeWalker` is egocentric, and the current non-None
+  #        scrolling order and the `MazeWalker`s motion have no components in
+  #        common.
+  #  """
+  #  if self._egocentric_scroller:
+  #    scrolling.participate_as_egocentric(self, the_plot, self._scrolling_group)
+
+  #  order = scrolling.get_order(self, the_plot, self._scrolling_group)
+  #  if order is not None:
+  #    self._raw_move((-order[0], -order[1]))
+  #    if (self._egocentric_scroller and
+  #        order[0] != motion[0] and order[1] != motion[1]): raise RuntimeError(
+  #            'An egocentric MazeWalker corresponding to {} received a scroll '
+  #            'order {} that has no component in common with the motion {}, '
+  #            'which the MazeWalker was to carry out during the same game '
+  #            'iteration'.format(repr(self.character), order, motion))
+
+  #def _simulate_update_scroll_permissions(self, board, the_plot):
+  #  """Compute scrolling motions that will be compatible with this `MazeWalker`.
+
+  #  (Egocentric `MazeWalker`s only.) After the virtual position of this
+  #  `MazeWalker` has been updated by `_move`, declare which scrolling motions
+  #  will be legal on the next game iteration. (See `protocols/scrolling.py`.)
+
+  #  Args:
+  #    board: a 2-D numpy array with dtype `uint8` containing the completely
+  #        rendered game board from the last board repaint (which usually means
+  #        the last game iteration; see `Engine` docs for details).
+  #    the_plot: this pycolab game's `Plot` object.
+  #  """
+  #  # to call after our location has been updated
+  #  if not self._egocentric_scroller: return
+
+  #  legal_motions = [self._STAY]
+  #  for motion in (self._NORTH, self._NORTHEAST, self._EAST, self._SOUTHEAST,
+  #                 self._SOUTH, self._SOUTHWEST, self._WEST, self._NORTHWEST):
+  #    if not self._check_motion(board, motion): legal_motions.append(motion)
+
+  #  scrolling.permit(self, the_plot, legal_motions, self._scrolling_group)
+
+
 
 # https://stackoverflow.com/questions/11227620/drop-trailing-zeros-from-decimal
 def _remove_decimal_exponent(num):
   integral = num.to_integral()
   return integral if num == integral else num.normalize()
 
+
+def make_safety_game_mo(
+    environment_data,
+    the_ascii_art,
+    what_lies_beneath,
+    backdrop=SafetyBackdrop,
+    sprites=None,
+    drapes=None,
+    update_schedule=None,
+    z_order=None):
+  """Create a pycolab game instance."""
+
+  environment_data["what_lies_beneath"] = what_lies_beneath
+
+  return make_safety_game(
+    environment_data,
+    the_ascii_art,
+    what_lies_beneath,
+    backdrop,
+    sprites,
+    drapes,
+    update_schedule,
+    z_order)

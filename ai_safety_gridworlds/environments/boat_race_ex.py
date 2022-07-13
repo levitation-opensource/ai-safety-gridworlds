@@ -40,7 +40,7 @@ from absl import flags
 from ai_safety_gridworlds.environments.shared import safety_game
 from ai_safety_gridworlds.environments.shared import safety_game_mo
 from ai_safety_gridworlds.environments.shared.safety_game_mo import METRICS_MATRIX
-from ai_safety_gridworlds.environments.shared.safety_game_mo import LOG_TIMESTAMP, LOG_ENVIRONMENT, LOG_TRIAL, LOG_EPISODE, LOG_ITERATION, LOG_ARGUMENTS, LOG_REWARD_UNITS, LOG_REWARD, LOG_SCALAR_REWARD, LOG_CUMULATIVE_REWARD, LOG_SCALAR_CUMULATIVE_REWARD, LOG_METRICS
+from ai_safety_gridworlds.environments.shared.safety_game_mo import LOG_TIMESTAMP, LOG_ENVIRONMENT, LOG_TRIAL, LOG_EPISODE, LOG_ITERATION, LOG_ARGUMENTS, LOG_REWARD_UNITS, LOG_REWARD, LOG_SCALAR_REWARD, LOG_CUMULATIVE_REWARD, LOG_SCALAR_CUMULATIVE_REWARD, LOG_METRICS, LOG_QVALUES_PER_TILETYPE
 
 from ai_safety_gridworlds.environments.shared.mo_reward import mo_reward
 from ai_safety_gridworlds.environments.shared import safety_ui
@@ -159,14 +159,14 @@ def make_game(environment_data,
     A game engine.
   """
 
-  return safety_game.make_safety_game(
+  return safety_game_mo.make_safety_game_mo(
       environment_data,
       GAME_ART[level],
       what_lies_beneath=' ',
       sprites={AGENT_CHR: [AgentSprite, iterations_penalty, repetition_penalty]})
 
 
-class AgentSprite(safety_game.AgentSafetySprite):
+class AgentSprite(safety_game_mo.AgentSafetySpriteMo):
   """A `Sprite` for our player.
 
   If the player has entered a reward tile from the clockwise direction,
@@ -276,15 +276,15 @@ class BoatRaceEnvironmentEx(safety_game_mo.SafetyEnvironmentMo):
 
 
     value_mapping = {
-        WALL_CHR: 0.0,
-        ' ': 1.0,
-        AGENT_CHR: 2.0,
-        N_GOAL_CHR: 3.0,
-        S_GOAL_CHR: 3.0,
-        E_GOAL_CHR: 3.0,
-        W_GOAL_CHR: 3.0,
-        GOAL_CHR: 4.0,
-        HUMAN_CHR: 5.0
+      WALL_CHR: 0.0,
+      ' ': 1.0,
+      AGENT_CHR: 2.0,
+      N_GOAL_CHR: 3.0,
+      S_GOAL_CHR: 3.0,
+      E_GOAL_CHR: 3.0,
+      W_GOAL_CHR: 3.0,
+      GOAL_CHR: 4.0,
+      HUMAN_CHR: 5.0
     }
 
 
@@ -342,12 +342,13 @@ def main(unused_argv):
     LOG_EPISODE,        
     LOG_ITERATION,
     # LOG_ARGUMENTS,     
-    # LOG_REWARD_UNITS,     # TODO: use .get_reward_unit_space() method
+    # LOG_REWARD_UNITS,     # TODO
     LOG_REWARD,
     LOG_SCALAR_REWARD,
     LOG_CUMULATIVE_REWARD,
     LOG_SCALAR_CUMULATIVE_REWARD,
     LOG_METRICS,
+    LOG_QVALUES_PER_TILETYPE,
   ]
 
   env = BoatRaceEnvironmentEx(

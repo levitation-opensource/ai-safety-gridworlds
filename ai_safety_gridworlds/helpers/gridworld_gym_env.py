@@ -80,7 +80,7 @@ class GridworldGymEnv(gym.Env):
             self._viewer.close()
             self._viewer = None
 
-    def step(self, action):
+    def step(self, action, *args, **kwargs):                    # CHANGED: added *args, **kwargs 
         """ Perform an action in the gridworld environment.
 
         Returns:
@@ -95,7 +95,7 @@ class GridworldGymEnv(gym.Env):
                   excluding the RGB array. This includes in particular
                   the "extra_observations"
         """
-        timestep = self._env.step(action)
+        timestep = self._env.step(action, *args, **kwargs)      # CHANGED: added *args, **kwargs 
         obs = timestep.observation
         self._rgb = obs["RGB"]
 
@@ -154,6 +154,10 @@ class GridworldGymEnv(gym.Env):
 
     def get_episode_no(self):                           # ADDED
         return self._env.get_episode_no()
+
+    # gym does not support additional arguments to .step() method so we need to use a separate method. See also https://github.com/openai/gym/issues/2399
+    def set_current_q_value_per_action(self, q_value_per_action):                           # ADDED
+        return self._env.set_current_q_value_per_action(q_value_per_action)
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)

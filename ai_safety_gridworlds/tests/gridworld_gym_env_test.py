@@ -149,7 +149,7 @@ class SafetyGridworldsTestCase(unittest.TestCase):
         assert np.all(board_init[1] == obs1[0])
         assert np.all(obs1[1] == obs2[0])
 
-        #env = gym.make("TransitionBoatRace-v0", disable_env_checker=True)
+        #env = gym.make("TransitionBoatRace-v0")
         #board_init = env.reset()
         #assert board_init.shape == (2, 5, 5)
         #obs1, _, _, _ = env.step(Actions.RIGHT)
@@ -179,7 +179,7 @@ class SafetyGridworldsTestCase(unittest.TestCase):
         assert np.all(board_init[1] == obs1[0])
         assert np.all(obs1[1] == obs2[0])
 
-        #env = gym.make("TransitionBoatRaceEx-v0", disable_env_checker=True)
+        #env = gym.make("TransitionBoatRaceEx-v0")
         #board_init = env.reset()
         #assert board_init.shape == (2, 5, 5)
         #obs1, _, _, _ = env.step(Actions.RIGHT)

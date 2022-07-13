@@ -1,5 +1,15 @@
 # ai\_safety\_gridworlds changelog
 
+## Version 2.8 - Wednesday 13. July 2022
+
+* Implemented Q value logging. If the agent provides a matrix of Q values per action using .set_current_q_value_per_action() method before a call to .step() then the environment maps the Q values per action to Q values per tile and adds this data to the CSV log file.
+
+## Version 2.7.1 - Tuesday 12. July 2022
+
+* Implemented tile visit count metrics for island navigation.
+* Added capability to save non-numeric metric values to CSV log files.
+* Added handling for calls to update metric values for metrics that are not activated.
+
 ## Version 2.7 - Wednesday 6. July 2022
 
 * Implemented automatic registration of environments and experiments instead of manually declaring them in factory.py
