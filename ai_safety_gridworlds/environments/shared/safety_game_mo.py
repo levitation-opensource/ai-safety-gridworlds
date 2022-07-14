@@ -45,6 +45,8 @@ import six
 METRICS_DICT = 'metrics_dict'
 METRICS_MATRIX = 'metrics_matrix'
 CUMULATIVE_REWARD = 'cumulative_reward'
+GINI_INDEX = 'gini_index'
+CUMULATIVE_GINI_INDEX = 'cumulative_gini_index'
 TILE_TYPES = 'tile_types'
 AGENT_SPRITE = 'agent_sprite'
 
@@ -60,6 +62,8 @@ LOG_REWARD_UNITS = 'reward_unit'      # TODO
 LOG_REWARD = 'reward'
 LOG_SCALAR_REWARD = 'scalar_reward'
 LOG_CUMULATIVE_REWARD = 'cumulative_reward'
+LOG_GINI_INDEX = 'gini_index'
+LOG_CUMULATIVE_GINI_INDEX = 'cumulative_gini_index'
 LOG_SCALAR_CUMULATIVE_REWARD = 'scalar_cumulative_reward'
 LOG_METRICS = 'metric'
 LOG_QVALUES_PER_TILETYPE = 'tiletype_qvalue'
@@ -420,6 +424,12 @@ class SafetyEnvironmentMo(SafetyEnvironment):
             elif col == LOG_SCALAR_CUMULATIVE_REWARD:
               data.append(LOG_SCALAR_CUMULATIVE_REWARD)
 
+            elif col == LOG_GINI_INDEX:
+              data.append(LOG_GINI_INDEX)
+
+            elif col == LOG_CUMULATIVE_GINI_INDEX:
+              data.append(LOG_CUMULATIVE_GINI_INDEX)
+
             elif col == LOG_METRICS:              
               data += [LOG_METRICS + "_" + x for x in self.metrics_keys]
 
@@ -693,6 +703,13 @@ class SafetyEnvironmentMo(SafetyEnvironment):
     timestep = timestep._replace(reward=reward)
 
 
+    gini_index = gini_coefficient(reward_dims) * 100
+    cumulative_gini_index = gini_coefficient(cumulative_reward_dims) * 100
+
+    timestep.observation[GINI_INDEX] = gini_index
+    timestep.observation[CUMULATIVE_GINI_INDEX] = cumulative_gini_index
+
+
     # if self._init_done and len(self.log_columns) > 0:
     if self._current_game.the_plot.frame > 0 and len(self.log_columns) > 0:
 
@@ -749,6 +766,12 @@ class SafetyEnvironmentMo(SafetyEnvironment):
           elif col == LOG_SCALAR_CUMULATIVE_REWARD:
             data.append(_remove_decimal_exponent(decimal_context.create_decimal_from_float(float(scalar_cumulative_reward))))   # use float cast to convert numpy.int to type that is digestible by decimal
 
+          elif col == LOG_GINI_INDEX:
+            data.append(_remove_decimal_exponent(decimal_context.create_decimal_from_float(float(gini_index))))   # use float cast to convert numpy.int to type that is digestible by decimal
+
+          elif col == LOG_CUMULATIVE_GINI_INDEX:
+            data.append(_remove_decimal_exponent(decimal_context.create_decimal_from_float(float(cumulative_gini_index))))   # use float cast to convert numpy.int to type that is digestible by decimal
+
           elif col == LOG_METRICS:
             metrics = self._environment_data.get(METRICS_DICT, {})
             data += [
@@ -774,7 +797,7 @@ class SafetyEnvironmentMo(SafetyEnvironment):
                       ]
                       for q_value_vec in
                       [
-                        self.q_value_per_tiletype.get(key, np.array([1, len(reward_dims)]))
+                        self.q_value_per_tiletype.get(key, np.zeros([len(reward_dims)]))
                         for key in self._environment_data[TILE_TYPES]
                       ]
                     ]))
@@ -1149,6 +1172,40 @@ class AgentSafetySpriteMo(AgentSafetySprite):   # TODO: rename to AgentSafetySpr
 def _remove_decimal_exponent(num):
   integral = num.to_integral()
   return integral if num == integral else num.normalize()
+
+
+def gini_coefficient(reward_dims):
+
+  #num_dims = len(reward_dims)
+  #numerator = np.sum([
+  #                np.abs(reward_dims[i] - reward_dims[j]) 
+  #                for i in range(num_dims) 
+  #                for j in range(num_dims)
+  #              ])
+  #denom = 2 * num_dims * np.abs(np.sum(reward_dims))
+  #result1 = numerator / (denom + np.finfo(float).eps)
+
+  ## adapted from https://stackoverflow.com/questions/39512260/calculating-gini-coefficient-in-python-numpy
+  ## Mean absolute difference
+  #mad = np.abs(np.subtract.outer(reward_dims, reward_dims)).mean()
+  ## Relative mean absolute difference
+  #rel_mad = mad / (np.abs(np.mean(reward_dims)) + np.finfo(float).eps)
+  ## Gini coefficient
+  #result2 = 0.5 * rel_mad
+
+  reward_dims = np.array(reward_dims) - min(reward_dims) # values cannot be negative
+  # adapted from https://stackoverflow.com/questions/39512260/calculating-gini-coefficient-in-python-numpy
+  # Mean absolute difference
+  mad = np.abs(np.subtract.outer(reward_dims, reward_dims)).mean()
+  # Relative mean absolute difference
+  rel_mad = mad / (np.mean(reward_dims) + np.finfo(float).eps)
+  # Gini coefficient
+  result3 = 0.5 * rel_mad
+
+  #assert abs(result1 - result2) < 0.000001
+  #assert abs(result2 - result3) < 0.000001
+
+  return result3
 
 
 def make_safety_game_mo(

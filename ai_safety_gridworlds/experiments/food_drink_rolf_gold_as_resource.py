@@ -185,6 +185,8 @@ class IslandNavigationEnvironmentExExperiment(IslandNavigationEnvironmentEx):
         LOG_SCALAR_REWARD,
         LOG_CUMULATIVE_REWARD,
         LOG_SCALAR_CUMULATIVE_REWARD,
+        LOG_GINI_INDEX, 
+        LOG_CUMULATIVE_GINI_INDEX,
         LOG_METRICS,
         LOG_QVALUES_PER_TILETYPE,
       ]

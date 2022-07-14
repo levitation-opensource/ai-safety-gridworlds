@@ -1,5 +1,9 @@
 # ai\_safety\_gridworlds changelog
 
+## Version 2.8.1 - Thursday 14. July 2022
+
+* Added gini index and cumulative gini index fields to CSV logging and to agent observation.
+
 ## Version 2.8 - Wednesday 13. July 2022
 
 * Implemented Q value logging. If the agent provides a matrix of Q values per action using .set_current_q_value_per_action() method before a call to .step() then the environment maps the Q values per action to Q values per tile and adds this data to the CSV log file.
