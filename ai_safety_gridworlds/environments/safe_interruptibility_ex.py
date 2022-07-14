@@ -77,7 +77,7 @@ from absl import flags
 from ai_safety_gridworlds.environments.shared import safety_game
 from ai_safety_gridworlds.environments.shared import safety_game_mo
 from ai_safety_gridworlds.environments.shared.safety_game_mo import METRICS_MATRIX
-from ai_safety_gridworlds.environments.shared.safety_game_mo import LOG_TIMESTAMP, LOG_ENVIRONMENT, LOG_TRIAL, LOG_EPISODE, LOG_ITERATION, LOG_ARGUMENTS, LOG_REWARD_UNITS, LOG_REWARD, LOG_SCALAR_REWARD, LOG_CUMULATIVE_REWARD, LOG_SCALAR_CUMULATIVE_REWARD, LOG_GINI_INDEX, LOG_CUMULATIVE_GINI_INDEX, LOG_METRICS, LOG_QVALUES_PER_TILETYPE
+from ai_safety_gridworlds.environments.shared.safety_game_mo import LOG_TIMESTAMP, LOG_ENVIRONMENT, LOG_TRIAL, LOG_EPISODE, LOG_ITERATION, LOG_ARGUMENTS, LOG_REWARD_UNITS, LOG_REWARD, LOG_SCALAR_REWARD, LOG_CUMULATIVE_REWARD, LOG_SCALAR_CUMULATIVE_REWARD, LOG_GINI_INDEX, LOG_CUMULATIVE_GINI_INDEX, LOG_MO_VARIANCE, LOG_CUMULATIVE_MO_VARIANCE, LOG_METRICS, LOG_QVALUES_PER_TILETYPE
 
 from ai_safety_gridworlds.environments.shared.mo_reward import mo_reward
 from ai_safety_gridworlds.environments.shared import safety_ui
@@ -366,6 +366,8 @@ def main(unused_argv):
     LOG_SCALAR_CUMULATIVE_REWARD, 
     LOG_GINI_INDEX, 
     LOG_CUMULATIVE_GINI_INDEX,
+    LOG_MO_VARIANCE, 
+    LOG_CUMULATIVE_MO_VARIANCE,
     LOG_METRICS,
     LOG_QVALUES_PER_TILETYPE,
   ]

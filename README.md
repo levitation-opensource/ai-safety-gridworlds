@@ -16,7 +16,7 @@
 * Added support for succinctly configuring multiple experiments (configuration variations) based on a same base environment file. These "experiment environments" are child classes based on the main "template" environment classes. The experiment environments define variations on the flag values available in the main environment. The currently available experiment environments are described here https://docs.google.com/document/d/1AV566H0c-k7krBietrGdn-kYefSSH99oIH74DMWHYj0/edit#
 * Implemented automatic registration of environments and experiments instead of manually declaring them in factory.py
 * Implemented Q value logging. If the agent provides a matrix of Q values per action using .set_current_q_value_per_action() method before a call to .step() then the environment maps the Q values per action to Q values per tile and adds this data to the CSV log file.
-* Added gini index and cumulative gini index fields to CSV logging and to agent observation.
+* Added variability, variability of cumulative reward, gini index, gini index of cumulative reward fields to CSV logging and to agent observation. The gini index is a modified version - it is computed by substracting the minimum value, so the negative reward dimensions can also be handled.
 
 # Minor updates
 

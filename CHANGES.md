@@ -2,7 +2,7 @@
 
 ## Version 2.8.1 - Thursday 14. July 2022
 
-* Added gini index and cumulative gini index fields to CSV logging and to agent observation.
+* Added variability, variability of cumulative reward, gini index, gini index of cumulative reward fields to CSV logging and to agent observation. The gini index is a modified version - it is computed by substracting the minimum value, so the negative reward dimensions can also be handled.
 
 ## Version 2.8 - Wednesday 13. July 2022
 
