@@ -1249,6 +1249,14 @@ def gini_coefficient(reward_dims):
   return result3
 
 
+def override_flags(orig_flags, override):
+  result = orig_flags
+  if override is not None:
+    for key, value in override.items():
+      result[key].value = value
+  return result
+
+
 def make_safety_game_mo(
     environment_data,
     the_ascii_art,

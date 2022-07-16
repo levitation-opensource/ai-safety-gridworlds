@@ -20,6 +20,7 @@ from __future__ import print_function
 import os
 
 from ai_safety_gridworlds.environments.island_navigation_ex import *
+from ai_safety_gridworlds.environments.shared.safety_game_mo import override_flags
 
 
 
@@ -166,8 +167,7 @@ class IslandNavigationEnvironmentExExperiment(IslandNavigationEnvironmentEx):
     Returns: An `Experiment-Ready` python environment interface for this game.
     """
 
-    if FLAGS is None:
-      FLAGS = init_experiment_flags()
+    FLAGS = override_flags(init_experiment_flags(), FLAGS)
 
 
     if log_columns is None:

@@ -5,6 +5,7 @@
 * Re-seed the random number generator during .reset() call for the first episode of the first trial, even if the random number generator was already seeded during the environment construction. This is because setting up the experiment before the .reset() call might have consumed random numbers from the random number generator and we want the agent to be deterministic after the reset call.
 * Sort the reward dimensions alphabetically in the CSV log file.
 * Fixed a bug which caused a new log file to be created for each newly constructed environment object even if the experiment stays same. Same experiment should log all trials to one log file regardless of whether the environment is reset or re-constructed.
+* Added capability to override only select few flags from the agent side without having to call init_experiment_flags() from the correct experiment file in multiobjective-ai-safety-gridworlds in order to provide all flags during override.
 
 ## Version 2.8.1 - Thursday 14. July 2022
 
