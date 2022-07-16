@@ -39,6 +39,10 @@ class mo_reward(object):
     return mo_reward(dict_clone, immutable=False)
 
 
+  def __eq__(self, other):
+    return self._reward_dimensions_dict == other._reward_dimensions_dict
+
+
   @staticmethod
   def parse(string):
 
@@ -72,9 +76,11 @@ class mo_reward(object):
                           for reward in enabled_mo_rewards]
 
       # select distinct keys:
-      # enabled_reward_dimension_keys = set.union(*keys_per_reward)  # this does not preserve the order of the keys
-      enabled_reward_dimension_keys = dict.fromkeys(itertools.chain.from_iterable(keys_per_reward)).keys()  # this preserves the order of the keys
-      return list(enabled_reward_dimension_keys)
+      # enabled_reward_dimension_keys = list(set.union(*keys_per_reward))  # this does not preserve the order of the keys
+      enabled_reward_dimension_keys = list(dict.fromkeys(itertools.chain.from_iterable(keys_per_reward)).keys())  # this preserves the order of the keys
+      enabled_reward_dimension_keys.sort()  # for some reason the sorting order was still changing
+
+      return enabled_reward_dimension_keys
 
 
   @staticmethod

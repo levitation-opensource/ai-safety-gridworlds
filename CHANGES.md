@@ -1,12 +1,18 @@
 # ai\_safety\_gridworlds changelog
 
+## Version 2.8.2 - Sunday 17. July 2022
+
+* Re-seed the random number generator during .reset() call for the first episode of the first trial, even if the random number generator was already seeded during the environment construction. This is because setting up the experiment before the .reset() call might have consumed random numbers from the random number generator and we want the agent to be deterministic after the reset call.
+* Sort the reward dimensions alphabetically in the CSV log file.
+* Fixed a bug which caused a new log file to be created for each newly constructed environment object even if the experiment stays same. Same experiment should log all trials to one log file regardless of whether the environment is reset or re-constructed.
+
 ## Version 2.8.1 - Thursday 14. July 2022
 
-* Added variability, variability of cumulative reward, gini index, gini index of cumulative reward fields to CSV logging and to agent observation. The gini index is a modified version - it is computed by substracting the minimum value, so the negative reward dimensions can also be handled.
+* Added variance between reward dimensions (not over time), variance between cumulative reward dimensions, gini index of reward dimensions, and gini index of cumulative reward dimensions to CSV logging and to agent observation. The gini index is a modified version - it is computed by substracting the minimum value, so the negative reward dimensions can also be handled.
 
 ## Version 2.8 - Wednesday 13. July 2022
 
-* Implemented Q value logging. If the agent provides a matrix of Q values per action using .set_current_q_value_per_action() method before a call to .step() then the environment maps the Q values per action to Q values per tile and adds this data to the CSV log file.
+* Implemented Q value logging. If the agent provides a matrix of Q values per action using .set_current_q_value_per_action() method before a call to .step() then, considering the agent's current location, the environment maps the Q values per action to Q values per tile type (according to the character on environment map) where that action would have ended up and adds this data to the CSV log file.
 
 ## Version 2.7.1 - Tuesday 12. July 2022
 

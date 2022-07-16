@@ -343,135 +343,154 @@ class SafetyEnvironmentMo(SafetyEnvironment):
       setattr(self.__class__, "create_new_log_file", True)
 
 
-    if self._state is not None and len(self.log_columns) > 0:   # self._state is None means that the parent class is calling reset() for the purpose of computing observation spec and the current class has not completed its constructor yet, nor has the agent sprite constructed yet.
-
-      if self.log_dir and not os.path.exists(self.log_dir):
-        os.makedirs(self.log_dir)
-
-      # TODO: option to include log_arguments in filename
+    # self._state == None means that the parent class is calling reset() for the purpose of computing observation spec and the current class has not completed its constructor yet, nor has the agent sprite constructed yet.
+    # self._state == environment.StepType.MID or self._state == environment.StepType.LAST means start_new_experiment is called at the end of previous experiment. Then do not create a new log file yet, just leave a flag that it is to be created next time. Still need to run rest of the reset code because various libraries might depend on the reset code being run fully once it is called.
+    if self._state == environment.StepType.FIRST:   
 
       # if prev_trial_no == -1:  # save all episodes and all trials to same file
       if getattr(self.__class__, "create_new_log_file"):
-
         setattr(self.__class__, "create_new_log_file", False)
 
-        classname = self.__class__.__name__
-        timestamp = datetime.datetime.now()
-        timestamp_str = datetime.datetime.strftime(timestamp, '%Y.%m.%d-%H.%M.%S')
+        if len(self.log_columns) > 0:
 
-        # NB! set log_filename only once per executione else the timestamp would change across episodes and trials and would cause a new file for each episode and trial.
-        log_filename = classname + ("-" if self.log_filename_comment else "") + self.log_filename_comment + "-" + timestamp_str + ".csv"
-        setattr(self.__class__, "log_filename", log_filename)
-        arguments_filename = classname + ("-" if self.log_filename_comment else "") + self.log_filename_comment + "-arguments-" + timestamp_str + ".txt" 
+          if self.log_dir and not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
+
+          # TODO: option to include log_arguments in filename
+
+          classname = self.__class__.__name__
+          timestamp = datetime.datetime.now()
+          timestamp_str = datetime.datetime.strftime(timestamp, '%Y.%m.%d-%H.%M.%S')
+
+          # NB! set log_filename only once per executione else the timestamp would change across episodes and trials and would cause a new file for each episode and trial.
+          log_filename = classname + ("-" if self.log_filename_comment else "") + self.log_filename_comment + "-" + timestamp_str + ".csv"
+          setattr(self.__class__, "log_filename", log_filename)
+          arguments_filename = classname + ("-" if self.log_filename_comment else "") + self.log_filename_comment + "-arguments-" + timestamp_str + ".txt" 
 
 
-        if self.log_arguments_to_separate_file:
-          with open(os.path.join(self.log_dir, arguments_filename), 'w', 1024 * 1024) as file:
-            print("{", file=file)   # using print() automatically generate newlines
+          if self.log_arguments_to_separate_file:
+            with open(os.path.join(self.log_dir, arguments_filename), 'w', 1024 * 1024) as file:
+              print("{", file=file)   # using print() automatically generate newlines
             
-            for key, arg in self.log_arguments.items():
-              print("\t'" + str(key) + "': " + str(arg) + ",", file=file)
+              for key, arg in self.log_arguments.items():
+                print("\t'" + str(key) + "': " + str(arg) + ",", file=file)
             
-            print("\t'FLAGS': {", file=file)
-            for key, value in self.flags.items():
-              print("\t\t'" + str(key) + "': " + str(value) + ",", file=file)
-            print("\t},", file=file)
+              print("\t'FLAGS': {", file=file)
+              for key, value in self.flags.items():
+                print("\t\t'" + str(key) + "': " + str(value) + ",", file=file)
+              print("\t},", file=file)
 
-            print("\t'reward_dimensions': {", file=file)
-            for index, key in enumerate(self.enabled_reward_dimension_keys):
-              print("\t\t'" + str(key) + "': [" + str(self.reward_unit_space[0][index]) + ", " + str(self.reward_unit_space[1][index]) + "],", file=file)
-            print("\t},", file=file)
+              print("\t'reward_dimensions': {", file=file)
+              for index, key in enumerate(self.enabled_reward_dimension_keys):
+                print("\t\t'" + str(key) + "': [" + str(self.reward_unit_space[0][index]) + ", " + str(self.reward_unit_space[1][index]) + "],", file=file)
+              print("\t},", file=file)
             
-            print("\t'metrics_keys': [", file=file)
-            for key in self.metrics_keys:
-              print("\t\t'" + str(key) + "',", file=file)
-            print("\t],", file=file)
+              print("\t'metrics_keys': [", file=file)
+              for key in self.metrics_keys:
+                print("\t\t'" + str(key) + "',", file=file)
+              print("\t],", file=file)
 
-            print("}", file=file)
-            # TODO: find a way to log reward unit sizes too
+              print("}", file=file)
+              # TODO: find a way to log reward unit sizes too
 
+              file.flush()
+
+
+          with open(os.path.join(self.log_dir, log_filename), 'a', 1024 * 1024, newline='') as file:   # csv writer creates its own newlines therefore need to set newline to empty string here
+            writer = csv.writer(file, quoting=csv.QUOTE_NONNUMERIC, delimiter=';')
+
+            data = []
+            for col in self.log_columns:
+
+              if col == LOG_TIMESTAMP:
+                data.append(LOG_TIMESTAMP)
+
+              elif col == LOG_ENVIRONMENT:
+                data.append(LOG_ENVIRONMENT)
+
+              elif col == LOG_TRIAL:
+                data.append(LOG_TRIAL)
+
+              elif col == LOG_EPISODE:
+                data.append(LOG_EPISODE)
+
+              elif col == LOG_ITERATION:
+                data.append(LOG_ITERATION)
+
+              elif col == LOG_ARGUMENTS:
+                data.append(LOG_ARGUMENTS)
+
+              #elif col == LOG_REWARD_UNITS:      # TODO
+              #  data += [LOG_REWARD_UNITS + "_" + x for x in self.enabled_reward_dimension_keys]
+
+              elif col == LOG_REWARD:
+                data += [LOG_REWARD + "_" + dim_key for dim_key in self.enabled_reward_dimension_keys]
+
+              elif col == LOG_SCALAR_REWARD:
+                data.append(LOG_SCALAR_REWARD)
+
+              elif col == LOG_CUMULATIVE_REWARD:
+                data += [LOG_CUMULATIVE_REWARD + "_" + dim_key for dim_key in self.enabled_reward_dimension_keys]
+
+              elif col == LOG_SCALAR_CUMULATIVE_REWARD:
+                data.append(LOG_SCALAR_CUMULATIVE_REWARD)
+
+              elif col == LOG_GINI_INDEX:
+                data.append(LOG_GINI_INDEX)
+
+              elif col == LOG_CUMULATIVE_GINI_INDEX:
+                data.append(LOG_CUMULATIVE_GINI_INDEX)
+
+              elif col == LOG_MO_VARIANCE:
+                data.append(LOG_MO_VARIANCE)
+
+              elif col == LOG_CUMULATIVE_MO_VARIANCE:
+                data.append(LOG_CUMULATIVE_MO_VARIANCE)
+
+              elif col == LOG_METRICS:              
+                data += [LOG_METRICS + "_" + x for x in self.metrics_keys]
+
+              elif col == LOG_QVALUES_PER_TILETYPE:
+                data += list(itertools.chain.from_iterable([
+                          [
+                            LOG_QVALUES_PER_TILETYPE + "_" + tile_type.strip() + "_" + dim_key    # NB! strip to replace the gap tile space character with an empty string 
+                            for dim_key in self.enabled_reward_dimension_keys
+                          ]
+                          for tile_type in self._environment_data[TILE_TYPES]
+                        ]))
+
+            writer.writerow(data)
             file.flush()
-
-
-        with open(os.path.join(self.log_dir, log_filename), 'a', 1024 * 1024, newline='') as file:   # csv writer creates its own newlines therefore need to set newline to empty string here
-          writer = csv.writer(file, quoting=csv.QUOTE_NONNUMERIC, delimiter=';')
-
-          data = []
-          for col in self.log_columns:
-
-            if col == LOG_TIMESTAMP:
-              data.append(LOG_TIMESTAMP)
-
-            elif col == LOG_ENVIRONMENT:
-              data.append(LOG_ENVIRONMENT)
-
-            elif col == LOG_TRIAL:
-              data.append(LOG_TRIAL)
-
-            elif col == LOG_EPISODE:
-              data.append(LOG_EPISODE)
-
-            elif col == LOG_ITERATION:
-              data.append(LOG_ITERATION)
-
-            elif col == LOG_ARGUMENTS:
-              data.append(LOG_ARGUMENTS)
-
-            #elif col == LOG_REWARD_UNITS:      # TODO
-            #  data += [LOG_REWARD_UNITS + "_" + x for x in self.enabled_reward_dimension_keys]
-
-            elif col == LOG_REWARD:
-              data += [LOG_REWARD + "_" + dim_key for dim_key in self.enabled_reward_dimension_keys]
-
-            elif col == LOG_SCALAR_REWARD:
-              data.append(LOG_SCALAR_REWARD)
-
-            elif col == LOG_CUMULATIVE_REWARD:
-              data += [LOG_CUMULATIVE_REWARD + "_" + dim_key for dim_key in self.enabled_reward_dimension_keys]
-
-            elif col == LOG_SCALAR_CUMULATIVE_REWARD:
-              data.append(LOG_SCALAR_CUMULATIVE_REWARD)
-
-            elif col == LOG_GINI_INDEX:
-              data.append(LOG_GINI_INDEX)
-
-            elif col == LOG_CUMULATIVE_GINI_INDEX:
-              data.append(LOG_CUMULATIVE_GINI_INDEX)
-
-            elif col == LOG_MO_VARIANCE:
-              data.append(LOG_MO_VARIANCE)
-
-            elif col == LOG_CUMULATIVE_MO_VARIANCE:
-              data.append(LOG_CUMULATIVE_MO_VARIANCE)
-
-            elif col == LOG_METRICS:              
-              data += [LOG_METRICS + "_" + x for x in self.metrics_keys]
-
-            elif col == LOG_QVALUES_PER_TILETYPE:
-              data += list(itertools.chain.from_iterable([
-                        [
-                          LOG_QVALUES_PER_TILETYPE + "_" + tile_type.strip() + "_" + dim_key    # NB! strip to replace the gap tile space character with an empty string 
-                          for dim_key in self.enabled_reward_dimension_keys
-                        ]
-                        for tile_type in self._environment_data[TILE_TYPES]
-                      ]))
-
-          writer.writerow(data)
-          file.flush()
         
-    else:
-      setattr(self.__class__, "log_filename", None)
+        else:   #/ if len(self.log_columns) > 0: 
+
+          # NB! this still has to be inside 'if getattr(self.__class__, "create_new_log_file")' condition
+          setattr(self.__class__, "log_filename", None)
 
 
     # note: no elif here. env.reset(start_new_experiment=True) should still execute rest of the .reset code just in case.
-    if trial_no is not None:
+    if start_new_experiment or trial_no is not None:
+
+      if start_new_experiment and trial_no is None:
+        trial_no = 1
+
       prev_trial_no = getattr(self.__class__, "trial_no")
-      if prev_trial_no != trial_no: # if new trial is started then reset the episode_no counter
+      episode_no = getattr(self.__class__, "episode_no")
+      if (
+        start_new_experiment  # If start_new_experiment is set then force random number generator seeding
+        or prev_trial_no != trial_no  # If new trial is started then reset the episode_no counter.
+        or (      # If reset is called at the start of first trial then force random number generator re-seeding since setting up the experiment before the .reset() call might have consumed random numbers from the random number generator and we want the agent to be deterministic after the reset call
+          trial_no == 1 
+          and episode_no == 1
+          and (self._state is None or self._state == environment.StepType.FIRST)
+        )
+      ):
         setattr(self.__class__, "trial_no", trial_no)
 
         setattr(self.__class__, "episode_no", 1)
         # use a different random number sequence for each trial
         # at the same time use deterministic seed numbers so that if the trials are re-run then the results are same
+        # TODO: seed random number generator for each trial AND episode?
         np.random.seed(int(trial_no) & 0xFFFFFFFF)  # 0xFFFFFFFF: np.random.seed accepts 32-bit int only
         # np.random.seed(int(time.time() * 10000000) & 0xFFFFFFFF)  # 0xFFFFFFFF: np.random.seed accepts 32-bit int only
 
@@ -722,8 +741,9 @@ class SafetyEnvironmentMo(SafetyEnvironment):
     timestep.observation[GINI_INDEX] = gini_index
     timestep.observation[CUMULATIVE_GINI_INDEX] = cumulative_gini_index
 
-    mo_variance = np.var(reward_dims)
-    cumulative_mo_variance = np.var(cumulative_reward_dims)
+    # If, however, ddof is specified, the divisor N - ddof is used instead. In standard statistical practice, ddof=1 provides an unbiased estimator of the variance of a hypothetical infinite population. ddof=0 provides a maximum likelihood estimate of the variance for normally distributed variables.
+    mo_variance = np.var(reward_dims, ddof=0)
+    cumulative_mo_variance = np.var(cumulative_reward_dims, ddof=0)
     timestep.observation[MO_VARIANCE] = mo_variance
     timestep.observation[CUMULATIVE_MO_VARIANCE] = cumulative_mo_variance
 
