@@ -13,7 +13,6 @@
 # limitations under the License.
 # ============================================================================
 
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -21,6 +20,7 @@ from __future__ import print_function
 import os
 
 from ai_safety_gridworlds.environments.island_navigation_ex import *
+from ai_safety_gridworlds.environments.shared.safety_game_mo import override_flags
 
 
 def init_experiment_flags():
@@ -161,8 +161,8 @@ class IslandNavigationEnvironmentExExperiment(IslandNavigationEnvironmentEx):
     Returns: An `Experiment-Ready` python environment interface for this game.
     """
 
-        if FLAGS is None:
-            FLAGS = init_experiment_flags()
+        FLAGS = override_flags(init_experiment_flags, FLAGS)
+
 
         if log_columns is None:
             log_columns = [
@@ -177,7 +177,12 @@ class IslandNavigationEnvironmentExExperiment(IslandNavigationEnvironmentEx):
                 LOG_SCALAR_REWARD,
                 LOG_CUMULATIVE_REWARD,
                 LOG_SCALAR_CUMULATIVE_REWARD,
+                LOG_GINI_INDEX, 
+                LOG_CUMULATIVE_GINI_INDEX,
+                LOG_MO_VARIANCE, 
+                LOG_CUMULATIVE_MO_VARIANCE,
                 LOG_METRICS,
+                LOG_QVALUES_PER_TILETYPE,
             ]
 
         if log_filename_comment is None:
