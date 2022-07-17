@@ -28,6 +28,8 @@ import itertools
 import numbers
 import os
 
+from absl import flags
+
 # Dependency imports
 from ai_safety_gridworlds.environments.shared.rl import array_spec as specs
 from ai_safety_gridworlds.environments.shared.rl import environment
@@ -1249,12 +1251,16 @@ def gini_coefficient(reward_dims):
   return result3
 
 
-def override_flags(orig_flags, override):
-  result = orig_flags
-  if override is not None:
-    for key, value in override.items():
-      result[key].value = value
-  return result
+def override_flags(init_or_define_flags_callback, override):
+
+  if override is flags.FLAGS:   # this is actually a single instance of a globally shared object
+    return override   # NB! in this case do not call create_orig_flags since that would reset the values in override object too
+  else:
+    result = init_or_define_flags_callback()
+    if override is not None:    # assume override is a dict
+      for key, value in override.items():
+        result[key].value = value
+    return result
 
 
 def make_safety_game_mo(

@@ -169,7 +169,7 @@ class IslandNavigationEnvironmentExExperiment(IslandNavigationEnvironmentEx):
     Returns: An `Experiment-Ready` python environment interface for this game.
     """
 
-    FLAGS = override_flags(init_experiment_flags(), FLAGS)
+    FLAGS = override_flags(init_experiment_flags, FLAGS)
 
 
     if log_columns is None:
