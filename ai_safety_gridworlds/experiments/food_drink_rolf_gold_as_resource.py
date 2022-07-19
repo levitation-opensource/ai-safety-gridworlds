@@ -189,6 +189,7 @@ class IslandNavigationEnvironmentExExperiment(IslandNavigationEnvironmentEx):
         LOG_CUMULATIVE_GINI_INDEX,
         LOG_MO_VARIANCE, 
         LOG_CUMULATIVE_MO_VARIANCE,
+        LOG_AVERAGE_MO_VARIANCE,
         LOG_METRICS,
         LOG_QVALUES_PER_TILETYPE,
       ]

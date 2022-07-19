@@ -81,6 +81,7 @@ PYTHONLEGACYWINDOWSSTDIO=1</Environment>
     <Compile Include="ai_safety_gridworlds\experiments\food_drink_rolf_gold_as_gap.py" />
     <Compile Include="ai_safety_gridworlds\experiments\food_drink_rolf_gold_as_resource.py" />
     <Compile Include="ai_safety_gridworlds\experiments\food_drink_rolf.py" />
+    <Compile Include="ai_safety_gridworlds\experiments\food_drink_rolf_gold_as_resource_scaled.py" />
     <Compile Include="ai_safety_gridworlds\experiments\food_drink_unbounded.py">
       <SubType>Code</SubType>
     </Compile>

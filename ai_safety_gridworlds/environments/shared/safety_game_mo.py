@@ -51,6 +51,7 @@ GINI_INDEX = 'gini_index'
 CUMULATIVE_GINI_INDEX = 'cumulative_gini_index'
 MO_VARIANCE = 'mo_variance'
 CUMULATIVE_MO_VARIANCE = 'cumulative_mo_variance'
+AVERAGE_MO_VARIANCE = 'average_mo_variance'
 TILE_TYPES = 'tile_types'
 AGENT_SPRITE = 'agent_sprite'
 
@@ -64,13 +65,14 @@ LOG_ITERATION = 'iteration'
 LOG_ARGUMENTS = 'arguments'
 LOG_REWARD_UNITS = 'reward_unit'      # TODO
 LOG_REWARD = 'reward'
-LOG_SCALAR_REWARD = 'scalar_reward'
+LOG_SCALAR_REWARD = 'scalar_reward'                         # TODO: add this metric to human console too
 LOG_CUMULATIVE_REWARD = 'cumulative_reward'
-LOG_GINI_INDEX = 'gini_index'
-LOG_CUMULATIVE_GINI_INDEX = 'cumulative_gini_index'
-LOG_MO_VARIANCE = 'mo_variance'
-LOG_CUMULATIVE_MO_VARIANCE = 'cumulative_mo_variance'
-LOG_SCALAR_CUMULATIVE_REWARD = 'scalar_cumulative_reward'
+LOG_GINI_INDEX = 'gini_index'                               # TODO: add this metric to human console too
+LOG_CUMULATIVE_GINI_INDEX = 'cumulative_gini_index'         # TODO: add this metric to human console too
+LOG_MO_VARIANCE = 'mo_variance'                             # TODO: add this metric to human console too
+LOG_CUMULATIVE_MO_VARIANCE = 'cumulative_mo_variance'       # TODO: add this metric to human console too
+LOG_AVERAGE_MO_VARIANCE = 'average_mo_variance'             # TODO: add this metric to human console too
+LOG_SCALAR_CUMULATIVE_REWARD = 'scalar_cumulative_reward'   # TODO: add this metric to human console too
 LOG_METRICS = 'metric'
 LOG_QVALUES_PER_TILETYPE = 'tiletype_qvalue'
 
@@ -449,6 +451,9 @@ class SafetyEnvironmentMo(SafetyEnvironment):
               elif col == LOG_CUMULATIVE_MO_VARIANCE:
                 data.append(LOG_CUMULATIVE_MO_VARIANCE)
 
+              elif col == LOG_AVERAGE_MO_VARIANCE:
+                data.append(LOG_AVERAGE_MO_VARIANCE)
+
               elif col == LOG_METRICS:              
                 data += [LOG_METRICS + "_" + x for x in self.metrics_keys]
 
@@ -712,7 +717,11 @@ class SafetyEnvironmentMo(SafetyEnvironment):
     timestep.observation[METRICS_DICT] = self._environment_data.get(METRICS_DICT, {})   
     
 
+    iteration = self._current_game.the_plot.frame
+
+
     cumulative_reward_dims = self._episode_return.tolist(self.enabled_mo_rewards)
+    average_reward_dims = [x / (iteration + 1) for x in cumulative_reward_dims]
     scalar_cumulative_reward = sum(cumulative_reward_dims)
 
     if self.scalarise:
@@ -743,11 +752,15 @@ class SafetyEnvironmentMo(SafetyEnvironment):
     timestep.observation[GINI_INDEX] = gini_index
     timestep.observation[CUMULATIVE_GINI_INDEX] = cumulative_gini_index
 
+
     # If, however, ddof is specified, the divisor N - ddof is used instead. In standard statistical practice, ddof=1 provides an unbiased estimator of the variance of a hypothetical infinite population. ddof=0 provides a maximum likelihood estimate of the variance for normally distributed variables.
     mo_variance = np.var(reward_dims, ddof=0)
     cumulative_mo_variance = np.var(cumulative_reward_dims, ddof=0)
+    average_mo_variance = np.var(average_reward_dims, ddof=0)
+
     timestep.observation[MO_VARIANCE] = mo_variance
     timestep.observation[CUMULATIVE_MO_VARIANCE] = cumulative_mo_variance
+    timestep.observation[AVERAGE_MO_VARIANCE] = average_mo_variance
 
 
     # if self._init_done and len(self.log_columns) > 0:
@@ -775,7 +788,7 @@ class SafetyEnvironmentMo(SafetyEnvironment):
             data.append(self.get_episode_no())
 
           elif col == LOG_ITERATION:
-            data.append(self._current_game.the_plot.frame)
+            data.append(iteration)
 
           elif col == LOG_ARGUMENTS:
             data.append(str(self.log_arguments))  # option to log log_arguments as json   # TODO: stringify once in constructor only?
@@ -785,39 +798,42 @@ class SafetyEnvironmentMo(SafetyEnvironment):
 
           elif col == LOG_REWARD:
             data += [
-                      self.format_float(dim_value)   # use float cast to convert numpy.int to type that is digestible by decimal
+                      self.format_float(dim_value) 
                       for dim_value in reward_dims
                     ]
 
           elif col == LOG_SCALAR_REWARD:
-            data.append(self.format_float(scalar_reward))     # use float cast to convert numpy.int to type that is digestible by decimal
+            data.append(self.format_float(scalar_reward)) 
 
           elif col == LOG_CUMULATIVE_REWARD:
             data += [
-                      self.format_float(dim_value)    # use float cast to convert numpy.int to type that is digestible by decimal
+                      self.format_float(dim_value) 
                       for dim_value in cumulative_reward_dims
                     ]
 
           elif col == LOG_SCALAR_CUMULATIVE_REWARD:
-            data.append(self.format_float(scalar_cumulative_reward))   # use float cast to convert numpy.int to type that is digestible by decimal
+            data.append(self.format_float(scalar_cumulative_reward))
 
           elif col == LOG_GINI_INDEX:
-            data.append(self.format_float(gini_index))   # use float cast to convert numpy.int to type that is digestible by decimal
+            data.append(self.format_float(gini_index))
 
           elif col == LOG_CUMULATIVE_GINI_INDEX:
-            data.append(self.format_float(cumulative_gini_index))   # use float cast to convert numpy.int to type that is digestible by decimal
+            data.append(self.format_float(cumulative_gini_index)) 
 
           elif col == LOG_MO_VARIANCE:
-            data.append(self.format_float(mo_variance))   # use float cast to convert numpy.int to type that is digestible by decimal
+            data.append(self.format_float(mo_variance))
 
           elif col == LOG_CUMULATIVE_MO_VARIANCE:
-            data.append(self.format_float(cumulative_mo_variance))   # use float cast to convert numpy.int to type that is digestible by decimal
+            data.append(self.format_float(cumulative_mo_variance))
+
+          elif col == LOG_AVERAGE_MO_VARIANCE:
+            data.append(self.format_float(average_mo_variance))
 
           elif col == LOG_METRICS:
             metrics = self._environment_data.get(METRICS_DICT, {})
             data += [
                       (
-                        self.format_float(dim_value)   # use float cast to convert numpy.int to type that is digestible by decimal
+                        self.format_float(dim_value) 
                       )
                       for dim_value in
                       [
@@ -829,7 +845,7 @@ class SafetyEnvironmentMo(SafetyEnvironment):
           elif col == LOG_QVALUES_PER_TILETYPE:
             data += list(itertools.chain.from_iterable([
                       [
-                        self.format_float(dim_q_value)   # use float cast to convert numpy.int to type that is digestible by decimal
+                        self.format_float(dim_q_value)
                         for dim_q_value in q_value_vec
                       ]
                       for q_value_vec in
