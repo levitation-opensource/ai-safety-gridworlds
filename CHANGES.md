@@ -3,6 +3,7 @@
 ## Version 2.8.3 - Tuesday 19. July 2022
 
 * Added average_mo_variance column to CSV file which computes variance over multi-objective reward dimensions of the average reward over all iterations of the episode until current iteration.
+* Added average_reward and scalar_average_reward columns to CSV output.
 
 ## Version 2.8.2 - Sunday 17. July 2022
 

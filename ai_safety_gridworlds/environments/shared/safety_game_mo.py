@@ -47,6 +47,7 @@ import six
 METRICS_DICT = 'metrics_dict'
 METRICS_MATRIX = 'metrics_matrix'
 CUMULATIVE_REWARD = 'cumulative_reward'
+AVERAGE_REWARD = 'average_reward'
 GINI_INDEX = 'gini_index'
 CUMULATIVE_GINI_INDEX = 'cumulative_gini_index'
 MO_VARIANCE = 'mo_variance'
@@ -67,12 +68,14 @@ LOG_REWARD_UNITS = 'reward_unit'      # TODO
 LOG_REWARD = 'reward'
 LOG_SCALAR_REWARD = 'scalar_reward'                         # TODO: add this metric to human console too
 LOG_CUMULATIVE_REWARD = 'cumulative_reward'
+LOG_AVERAGE_REWARD = 'average_reward'                       # TODO: add this metric to human console too
 LOG_GINI_INDEX = 'gini_index'                               # TODO: add this metric to human console too
 LOG_CUMULATIVE_GINI_INDEX = 'cumulative_gini_index'         # TODO: add this metric to human console too
 LOG_MO_VARIANCE = 'mo_variance'                             # TODO: add this metric to human console too
 LOG_CUMULATIVE_MO_VARIANCE = 'cumulative_mo_variance'       # TODO: add this metric to human console too
 LOG_AVERAGE_MO_VARIANCE = 'average_mo_variance'             # TODO: add this metric to human console too
 LOG_SCALAR_CUMULATIVE_REWARD = 'scalar_cumulative_reward'   # TODO: add this metric to human console too
+LOG_SCALAR_AVERAGE_REWARD = 'scalar_average_reward'         # TODO: add this metric to human console too
 LOG_METRICS = 'metric'
 LOG_QVALUES_PER_TILETYPE = 'tiletype_qvalue'
 
@@ -436,8 +439,14 @@ class SafetyEnvironmentMo(SafetyEnvironment):
               elif col == LOG_CUMULATIVE_REWARD:
                 data += [LOG_CUMULATIVE_REWARD + "_" + dim_key for dim_key in self.enabled_reward_dimension_keys]
 
+              elif col == LOG_AVERAGE_REWARD:
+                data += [LOG_AVERAGE_REWARD + "_" + dim_key for dim_key in self.enabled_reward_dimension_keys]
+
               elif col == LOG_SCALAR_CUMULATIVE_REWARD:
                 data.append(LOG_SCALAR_CUMULATIVE_REWARD)
+
+              elif col == LOG_SCALAR_AVERAGE_REWARD:
+                data.append(LOG_SCALAR_AVERAGE_REWARD)
 
               elif col == LOG_GINI_INDEX:
                 data.append(LOG_GINI_INDEX)
@@ -723,13 +732,20 @@ class SafetyEnvironmentMo(SafetyEnvironment):
     cumulative_reward_dims = self._episode_return.tolist(self.enabled_mo_rewards)
     average_reward_dims = [x / (iteration + 1) for x in cumulative_reward_dims]
     scalar_cumulative_reward = sum(cumulative_reward_dims)
+    scalar_average_reward = sum(average_reward_dims)
 
     if self.scalarise:
       cumulative_reward = float(scalar_cumulative_reward)
     else:
       cumulative_reward = np.array([float(x) for x in cumulative_reward_dims])
 
+    if self.scalarise:
+      average_reward = float(scalar_average_reward)
+    else:
+      average_reward = np.array([float(x) for x in average_reward_dims])
+
     timestep.observation[CUMULATIVE_REWARD] = cumulative_reward
+    timestep.observation[AVERAGE_REWARD] = average_reward
 
 
     # conversion of mo_reward to a np.array or float
@@ -811,8 +827,17 @@ class SafetyEnvironmentMo(SafetyEnvironment):
                       for dim_value in cumulative_reward_dims
                     ]
 
+          elif col == LOG_AVERAGE_REWARD:
+            data += [
+                      self.format_float(dim_value) 
+                      for dim_value in average_reward_dims
+                    ]
+
           elif col == LOG_SCALAR_CUMULATIVE_REWARD:
             data.append(self.format_float(scalar_cumulative_reward))
+
+          elif col == LOG_SCALAR_AVERAGE_REWARD:
+            data.append(self.format_float(scalar_average_reward))
 
           elif col == LOG_GINI_INDEX:
             data.append(self.format_float(gini_index))
