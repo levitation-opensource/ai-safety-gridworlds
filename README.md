@@ -75,8 +75,15 @@ Most of currently available experiment environments are described in the followi
 
 # Papers
 
-* A published research paper based on experiments using this repository: Smith, B.J., Klassert, R. & Pihlakas, R. "Using soft maximin for risk averse multi-objective decision-making". Autonomous Agents and Multi-Agent Systems 37, Article 11 (2023). https://link.springer.com/article/10.1007/s10458-022-09586-2
 * A working paper using this repo: Pihlakas, R & Pyykkö, J. "From homeostasis to resource sharing: Biologically and economically compatible multi-objective multi-agent AI safety benchmarks". Arxiv (2024). https://arxiv.org/abs/2410.00081 (See also https://github.com/aintelope/biological-compatibility-benchmarks)
+* A published research paper based on experiments using this repository: Smith, B.J., Klassert, R. & Pihlakas, R. "Using soft maximin for risk averse multi-objective decision-making". Autonomous Agents and Multi-Agent Systems 37, Article 11 (2023). https://link.springer.com/article/10.1007/s10458-022-09586-2
+
+
+# Blog posts
+
+* Why modelling multi-objective homeostasis is essential for AI alignment (and how it helps with AI safety as well) (2025) https://www.lesswrong.com/posts/vGeuBKQ7nzPnn5f7A/why-modelling-multi-objective-homeostasis-is-essential-for
+* Sets of objectives for a multi-objective RL agent to optimize (2022) https://www.lesswrong.com/posts/4mvdZXjwJHv9tSAWB/sets-of-objectives-for-a-multi-objective-rl-agent-to-1
+* A brief review of the reasons multi-objective RL could be important in AI Safety Research (2021) https://www.lesswrong.com/posts/i5dLfi6m6FCexReK9/a-brief-review-of-the-reasons-multi-objective-rl-could-be
 
 
 # Presentations
