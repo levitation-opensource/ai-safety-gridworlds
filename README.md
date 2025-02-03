@@ -98,6 +98,11 @@ Most of currently available experiment environments are described in the followi
     - Slides: https://bit.ly/beamm 
 
 
+# Related work
+
+* BioBlue: Biologically and economically aligned AI safety benchmarks for LLM-s with simplified observation format (Roland Pihlakas, Shruti Datta Gupta, Sruthi Kuriakose 2025) [repo](https://github.com/levitation-opensource/bioblue) and [PDF report](https://github.com/levitation-opensource/bioblue/blob/main/BioBlue%20-%20Biologically%20and%20economically%20aligned%20AI%20safety%20benchmarks%20for%20LLMs.pdf)
+
+
 # Acknowledgements
 I would like to thank Ben Smith, Robert Klassert, Joel Pyykkö, AI Safety Camp V, AIntelope, LTFF, Emergent Ventures / Mercatus Center at George Mason University, and Foresight Institute.
 
