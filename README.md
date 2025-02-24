@@ -1,3 +1,9 @@
+
+# Extended, multi-agent and multi-objective version of AI Safety Gridworlds
+
+Extended, multi-agent and multi-objective (MaMoRL / MoMaRL) environments based on DeepMind's AI Safety Gridworlds. This is a suite of reinforcement learning environments illustrating various safety properties of intelligent agents. It is made compatible with OpenAI's Gym/Gymnasium and Farama Foundation PettingZoo. 
+
+
 # Descriptions of the added environments
 
 Most of currently available experiment environments are described in the following sources:
