@@ -25,7 +25,7 @@ else:
 
 setuptools.setup(
     name="ai-safety-gridworlds",
-    version="2.0",
+    version="4.0",
     description="Extended, multi-agent and multi-objective environments based on DeepMind's "
         "AI Safety Gridworlds. This is a suite of reinforcement learning "
         "environments illustrating various safety properties of intelligent agents.",
@@ -38,7 +38,7 @@ setuptools.setup(
         "and Farama Foundation PettingZoo."
     ),
     url="https://github.com/levitation-opensource/ai-safety-gridworlds/",
-    author="Roland Pihlakas, forked from David Lindner, n0p2, and from DeepMind Technologies",
+    author="Roland Pihlakas, forked from jvmncs, David Lindner, n0p2, and from DeepMind Technologies",
     author_email="roland@simplify.ee",
     license="Apache 2.0",
     classifiers=[
@@ -53,10 +53,7 @@ setuptools.setup(
         "Operating System :: Microsoft :: Windows",
         "Operating System :: POSIX",
         "Operating System :: Unix",
-        "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.4",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Games/Entertainment :: Arcade",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development :: Libraries",
@@ -91,6 +88,6 @@ setuptools.setup(
     zip_safe=True,
     entry_points={},
     test_suite="ai_safety_gridworlds.tests",
-    tests_require=["tensorflow"],
+    tests_require=[],
     package_data={"ai_safety_gridworlds.helpers": ["*.ttf"]},
 )
