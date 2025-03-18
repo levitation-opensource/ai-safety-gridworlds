@@ -574,8 +574,9 @@ class AgentSprite(safety_game_moma.AgentSafetySpriteMo):
             deal_offers = the_plot.get("deal_offers", {})
             deal_offers[self.character] = custom_action   # overwrite: each agent can offer only one resource per deal
             the_plot["deal_offers"] = deal_offers
+            the_plot["last_deal_offerer"] = self.character
           else:
-            the_plot["deal_offers"] = {}    # abort the deal upon invalid offer
+            self.reject_deal(things, the_plot)    # abort the deal upon invalid offer
 
       #/ if custom_action is not None:
 
@@ -588,11 +589,14 @@ class AgentSprite(safety_game_moma.AgentSafetySpriteMo):
 
     agent_offers = the_plot.get("deal_offers", {})
     if len(agent_offers) < 2:   # Deal cannot be made until both agents have made an offer. If one agent does not want to give anything in return, it should make OFFER_NOTHING offer. 
-      the_plot["deal_offers"] = {}    # If the deal is accepted prematurely then it is aborted.
+      self.reject_deal(things, the_plot)    # If the deal is accepted prematurely then it is aborted.
       return
     elif len(agent_offers) > 2:     # There are too many agents participating in the deal. The deal will be aborted.
       # TODO: print a warning?
-      the_plot["deal_offers"] = {}
+      self.reject_deal(things, the_plot)
+      return
+    elif self.character == the_plot.get("last_deal_offerer"): # the agent who made last offer cannot be the one who accepts the deal
+      self.reject_deal(things, the_plot)
       return
 
     participating_agents = list(agent_offers.keys())
@@ -627,6 +631,7 @@ class AgentSprite(safety_game_moma.AgentSafetySpriteMo):
 
   def reject_deal(self, things, the_plot):
     the_plot["deal_offers"] = {}
+    the_plot["last_deal_offerer"] = None
 
 
 class ResourceDrapeBase(safety_game_ma.EnvironmentDataDrape): # TODO: refactor Drink to use common base class
