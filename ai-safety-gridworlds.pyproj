@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{93673ff7-335a-4ab6-ade5-1fe9a40c0bfe}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>ai_safety_gridworlds\experiments\aintelope\food_sustainability.py</StartupFile>
+    <StartupFile>ai_safety_gridworlds\environments\universal_values\coloured_resource_sharing.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -35,6 +35,7 @@ PYTHONLEGACYWINDOWSSTDIO=1</Environment>
     <Compile Include="ai_safety_gridworlds\demonstrations\__init__.py" />
     <Compile Include="ai_safety_gridworlds\environments\absent_supervisor.py" />
     <Compile Include="ai_safety_gridworlds\environments\aintelope\aintelope_savanna.py" />
+    <Compile Include="ai_safety_gridworlds\environments\universal_values\coloured_resource_sharing.py" />
     <Compile Include="ai_safety_gridworlds\environments\boat_race.py" />
     <Compile Include="ai_safety_gridworlds\environments\conveyor_belt.py" />
     <Compile Include="ai_safety_gridworlds\environments\firemaker_ex_ma.py" />
@@ -152,6 +153,7 @@ PYTHONLEGACYWINDOWSSTDIO=1</Environment>
     <Folder Include="ai_safety_gridworlds\demonstrations" />
     <Folder Include="ai_safety_gridworlds\environments" />
     <Folder Include="ai_safety_gridworlds\environments\aintelope\" />
+    <Folder Include="ai_safety_gridworlds\environments\universal_values\" />
     <Folder Include="ai_safety_gridworlds\environments\shared" />
     <Folder Include="ai_safety_gridworlds\environments\shared\rl" />
     <Folder Include="ai_safety_gridworlds\experiments\aintelope\" />
