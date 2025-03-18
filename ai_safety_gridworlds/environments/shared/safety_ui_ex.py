@@ -172,15 +172,41 @@ class SafetyCursesUiEx(safety_ui.SafetyCursesUi):
         if action == safety_game_mo_base.Actions.QUIT:
           is_valid_action = True
         elif isinstance(self._env, safety_game_moma.SafetyEnvironmentMoMa):
-          if action < self._env._valid_actions[0].minimum[0] or self._env._valid_actions[0].maximum[0] < action:
-            is_valid_action = False
-        else:
+          if isinstance(action, dict):  # has a custom action
+
+            step_action = action["step"]
+            custom_action = action["custom_action"]
+
+            if isinstance(self._env._valid_actions, list):    # does the action spec contain continuous_actions part?
+              # subdimension-3 is the custom action subdimension              
+              if custom_action < self._env._valid_actions[0].minimum[3] or self._env._valid_actions[0].maximum[3] < custom_action:
+                is_valid_action = False
+            else: 
+              # subdimension-3 is the custom action subdimension
+              if custom_action < int(self._env._valid_actions.minimum[3]) or int(self._env._valid_actions.maximum[3]) < custom_action:
+                is_valid_action = False
+          else:
+            step_action = action
+
+          # TODO: in case the rotation or attention rotation actions are separate subdimensions then check these too
+
+          # subdimension-0 is the step-action subdimension
+          if isinstance(self._env._valid_actions, list):    # does the action spec contain continuous_actions part?
+            if step_action < self._env._valid_actions[0].minimum[0] or self._env._valid_actions[0].maximum[0] < step_action:
+              is_valid_action = False
+          else: 
+            if step_action < int(self._env._valid_actions.minimum[0]) or int(self._env._valid_actions.maximum[0]) < step_action:
+              is_valid_action = False
+        else:   #/ elif isinstance(self._env, safety_game_moma.SafetyEnvironmentMoMa):
           if action < int(self._env._valid_actions.minimum) or int(self._env._valid_actions.maximum) < action:
             is_valid_action = False
 
         if is_valid_action:
-          if isinstance(self._env, safety_game_moma.SafetyEnvironmentMoMa):          
-            agents_actions = { self._env.current_agent.character: { "step": action } }
+          if isinstance(self._env, safety_game_moma.SafetyEnvironmentMoMa):  
+            if not isinstance(action, dict):    # does the action contain custom_actions dimension?
+              agents_actions = { self._env.current_agent.character: { "step": action, "custom_action": None } }
+            else:
+              agents_actions = { self._env.current_agent.character: action }
             self._env.step(agents_actions)
           else:
             self._env.step(action)
@@ -601,7 +627,7 @@ class SafetyCursesUiEx(safety_ui.SafetyCursesUi):
 
 
 # adapted from ai_safety_gridworlds\environments\shared\safety_ui.py
-def make_human_curses_ui_with_noop_keys(game_bg_colours, game_fg_colours, noop_keys, turning_keys=False, delay=50 #, agent_perspectives=None
+def make_human_curses_ui_with_noop_keys(game_bg_colours, game_fg_colours, noop_keys, turning_keys=False, delay=50, custom_actions={} #, agent_perspectives=None
 ):
   """Instantiate a Python Curses UI for the terminal game.
 
@@ -627,6 +653,15 @@ def make_human_curses_ui_with_noop_keys(game_bg_colours, game_fg_colours, noop_k
                     'Q':                safety_game_mo_base.Actions.QUIT
                   }
 
+  # custom actions cannot be stored in the same field as main movement actions due to the way the gridworlds action space is set up
+  custom_actions = { 
+    key: { 
+      "custom_action": value, 
+      "step": safety_game_mo_base.Actions.NOOP,
+    } 
+    for key, value in custom_actions.items() 
+  }
+
   if noop_keys:
      keys_to_actions.update({
         # middle button on keypad
@@ -648,6 +683,8 @@ def make_human_curses_ui_with_noop_keys(game_bg_colours, game_fg_colours, noop_k
         curses.KEY_C3:    safety_game_mo_base.Actions.TURN_RIGHT_180,    # Lower right of keypad
         curses.KEY_NPAGE: safety_game_mo_base.Actions.TURN_RIGHT_180, # Page down
       })
+
+  keys_to_actions.update(custom_actions)
 
 
   return SafetyCursesUiEx(  

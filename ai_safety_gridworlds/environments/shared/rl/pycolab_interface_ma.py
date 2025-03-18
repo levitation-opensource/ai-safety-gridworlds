@@ -333,7 +333,7 @@ class EnvironmentMa(safety_game.SafetyEnvironment):   # need to use safety_game.
       valid_actions.append(spec)
 
     # Then continuous actions:
-    if continuous_actions is not None:
+    if continuous_actions is not None and len(continuous_actions) != 0:
 
       if isinstance(continuous_actions, dict):                # ADDED
         continuous_actions = continuous_actions.values()      # ADDED

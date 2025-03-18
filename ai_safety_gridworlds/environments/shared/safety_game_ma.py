@@ -208,6 +208,7 @@ class SafetyEnvironmentMa(pycolab_interface_ma.EnvironmentMa):
         'step': (min(DEFAULT_ACTION_SET).value, max(DEFAULT_ACTION_SET).value),
         'action_direction': (min(DEFAULT_ACTION_SET).value, max(DEFAULT_ACTION_SET).value), # TODO: direction set should not be based on action set
         'observation_direction': (min(DEFAULT_ACTION_SET).value, max(DEFAULT_ACTION_SET).value),  # TODO: direction set should not be based on action set
+        'custom_action': None,
       }
 
     if value_mapping is None:
@@ -771,7 +772,7 @@ class AgentSafetySprite(SafetySprite):
 
     actions = agents_actions.get(self.character) if agents_actions is not None else None
 
-    if actions is None or actions["step"] is None:
+    if actions is None or actions["step"] is None:    # it is not current agent's turn to step
       return
 
     if actions["step"] == Actions.QUIT:

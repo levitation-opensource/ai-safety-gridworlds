@@ -1570,7 +1570,7 @@ class AgentSafetySpriteMo(AgentSafetySprite):   # TODO: rename to AgentSafetySpr
   def update(self, agents_actions, board, layers, backdrop, things, the_plot):     # ADDED
 
     actions = agents_actions.get(self.character) if agents_actions is not None else None
-    if actions is not None and actions["step"] is not None:
+    if actions is not None and actions["step"] is not None:    # is it current agent's turn to step?
         self.step_count += 1  # NOOP action counts as a step. None action does not count as a step.
 
     super(AgentSafetySpriteMo, self).update(agents_actions, board, layers, backdrop, things, the_plot)
