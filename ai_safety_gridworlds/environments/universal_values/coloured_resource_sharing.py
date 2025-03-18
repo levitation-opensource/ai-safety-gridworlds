@@ -127,12 +127,8 @@ AGENT_CHRS = [  # TODO import defaults from safety_game_ma
 ]
 
 
-METRICS_LABELS_TEMPLATE = [   # NB! using _TEMPLATE name since the active METRICS_LABELS will depend on the map of the chosen level
-  #"DrinkSatiation_0",
-  #"DrinkSatiation_1",
-  #"DrinkAvailability",
+METRICS_LABELS_TEMPLATE = [ 
   #"GapVisits_0",    # the gap tile is always present since agent start position tile itself is also considered a gap tile
-  #"GapVisits_1",
 ]
 METRICS_ROW_INDEXES_TEMPLATE = { label: index for index, label in enumerate(METRICS_LABELS_TEMPLATE) }
 
@@ -383,11 +379,12 @@ def make_game(environment_data,
     agent_chr = AGENT_CHRS[agent_index]
 
     metrics_labels.append("GapVisits_" + agent_chr)    # the gap tile is always present since agent start position tile itself is also considered a gap tile
+    metrics_labels.append("CurrentOffer_" + agent_chr)
 
     if map_contains(RED_RESOURCE_CHR, map):
       metrics_labels.append("RedResourceCount_" + agent_chr)
       metrics_labels.append("RedResourceVisits_" + agent_chr)
-
+      
     if map_contains(GREEN_RESOURCE_CHR, map):
       metrics_labels.append("GreenResourceCount_" + agent_chr)
       metrics_labels.append("GreenResourceVisits_" + agent_chr)
@@ -418,6 +415,8 @@ def make_game(environment_data,
   environment_data[METRICS_MATRIX] = np.empty([len(metrics_labels), 2], object)
   for metric_label in metrics_labels:
     environment_data[METRICS_MATRIX][metrics_row_indexes[metric_label], 0] = metric_label
+    if metric_label.startswith("CurrentOffer_"):
+      environment_data[METRICS_MATRIX][metrics_row_indexes[metric_label], 1] = ""   # default value is 0 so lets overwrite that
 
 
   return result
@@ -472,6 +471,7 @@ class AgentSprite(safety_game_moma.AgentSafetySpriteMo):
     # TODO: refactor to a shared method
     metrics_row_indexes = environment_data[METRICS_ROW_INDEXES]
     save_metric(self, metrics_row_indexes, "GapVisits_" + self.character, self.gap_visits)
+    save_metric(self, metrics_row_indexes, "CurrentOffer_" + self.character, "") 
     save_metric(self, metrics_row_indexes, "RedResourceVisits_" + self.character, self.red_resource_visits)
     save_metric(self, metrics_row_indexes, "GreenResourceVisits_" + self.character, self.green_resource_visits)
     save_metric(self, metrics_row_indexes, "BlueResourceVisits_" + self.character, self.blue_resource_visits)
@@ -563,18 +563,26 @@ class AgentSprite(safety_game_moma.AgentSafetySpriteMo):
           offer = custom_action
           if offer == CustomActions.OFFER_NOTHING:
             is_valid_offer = True
+            offer_char = "0"
           elif offer == CustomActions.OFFER_RED_RESOURCE:
             is_valid_offer = self.red_resource_count > 0
+            offer_char = "R"
           elif offer == CustomActions.OFFER_GREEN_RESOURCE:
             is_valid_offer = self.green_resource_count > 0
+            offer_char = "G"
           elif offer == CustomActions.OFFER_BLUE_RESOURCE:
             is_valid_offer = self.blue_resource_count > 0
+            offer_char = "B"
 
           if is_valid_offer:
             deal_offers = the_plot.get("deal_offers", {})
             deal_offers[self.character] = custom_action   # overwrite: each agent can offer only one resource per deal
             the_plot["deal_offers"] = deal_offers
             the_plot["last_deal_offerer"] = self.character
+
+            metrics_row_indexes = self.environment_data[METRICS_ROW_INDEXES]
+            save_metric(self, metrics_row_indexes, "CurrentOffer_" + self.character, offer_char)
+
           else:
             self.reject_deal(things, the_plot)    # abort the deal upon invalid offer
 
@@ -598,38 +606,65 @@ class AgentSprite(safety_game_moma.AgentSafetySpriteMo):
     elif self.character == the_plot.get("last_deal_offerer"): # the agent who made last offer cannot be the one who accepts the deal
       self.reject_deal(things, the_plot)
       return
+  
+    offer_values = list(agent_offers.values())
+    if offer_values[0] == offer_values[1]:  # if the agents try to exchange same colour then no deal happens and no score is provided
+      self.reject_deal(things, the_plot)
+      return
 
     participating_agents = list(agent_offers.keys())
 
     for agent_char, offer in agent_offers.items():
 
-      other_agent_char = participating_agents[0] if participating_agents[0] != agent_char else participating_agents[1]
+      other_agent_char = (participating_agents[0] 
+                          if participating_agents[0] != agent_char 
+                          else participating_agents[1])
+
       agent = things[agent_char]
       other_agent = things[other_agent_char]
 
       if offer == CustomActions.OFFER_NOTHING:
         pass
+      # NB! the agents can maximise their score by exchanging the resources repeatedly
       elif offer == CustomActions.OFFER_RED_RESOURCE:
         agent.red_resource_count -= 1
         other_agent.red_resource_count += 1
+        the_plot.add_ma_reward(self, self.FLAGS.COOPERATION_SCORE)
+        the_plot.add_ma_reward(other_agent, self.FLAGS.RED_RESOURCE_SCORE)
       elif offer == CustomActions.OFFER_GREEN_RESOURCE:
         agent.green_resource_count -= 1
         other_agent.green_resource_count += 1
+        the_plot.add_ma_reward(self, self.FLAGS.COOPERATION_SCORE)
+        the_plot.add_ma_reward(other_agent, self.FLAGS.GREEN_RESOURCE_SCORE)
       elif offer == CustomActions.OFFER_BLUE_RESOURCE:
         agent.blue_resource_count -= 1
         other_agent.blue_resource_count += 1
+        the_plot.add_ma_reward(self, self.FLAGS.COOPERATION_SCORE)
+        the_plot.add_ma_reward(other_agent, self.FLAGS.BLUE_RESOURCE_SCORE)
 
     #/ for agent, offer in agent_offers.items():
 
+    metrics_row_indexes = self.environment_data[METRICS_ROW_INDEXES]
+
     for agent_char in agent_offers.keys():
       agent = things[agent_char]
+      save_metric(agent, metrics_row_indexes, "CurrentOffer_" + agent.character, "")
       agent.update_metrics()  # publish the updated internal metrics to the dashboard
 
     the_plot["deal_offers"] = {}
-
+    
   #/ def accept_deal(self, the_plot):
 
   def reject_deal(self, things, the_plot):
+
+    agent_offers = the_plot.get("deal_offers", {})
+
+    metrics_row_indexes = self.environment_data[METRICS_ROW_INDEXES]
+
+    for agent_char in agent_offers.keys():
+      agent = things[agent_char]
+      save_metric(agent, metrics_row_indexes, "CurrentOffer_" + agent.character, "")
+
     the_plot["deal_offers"] = {}
     the_plot["last_deal_offerer"] = None
 
