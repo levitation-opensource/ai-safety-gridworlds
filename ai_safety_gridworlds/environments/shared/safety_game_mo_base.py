@@ -37,8 +37,8 @@ from pycolab import things as plab_things
 from pycolab.prefab_parts import sprites as prefab_sprites
 
 import six
-from six.moves import map
-from six.moves import range
+# from six.moves import map
+# from six.moves import range
 
 
 # Make absl flags pickleable. This is needed for multiprocessing purposes.

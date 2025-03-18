@@ -27,7 +27,7 @@ from ai_safety_gridworlds.environments.shared import safety_game
 
 import numpy as np
 import six
-from six.moves import zip
+# from six.moves import zip
 
 
 AGENT_SPRITE = 'agent_sprite'

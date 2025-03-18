@@ -41,8 +41,8 @@ from pycolab import things as plab_things
 from pycolab.prefab_parts import sprites as prefab_sprites
 
 import six
-from six.moves import map
-from six.moves import range
+# from six.moves import map
+# from six.moves import range
 
 
 AGENT_SPRITE = 'agent_sprite'   # TODO: use safety_game_moma.AGENT_SPRITE instead

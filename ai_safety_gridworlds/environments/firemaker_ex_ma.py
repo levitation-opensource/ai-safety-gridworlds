@@ -51,7 +51,7 @@ from ai_safety_gridworlds.environments.shared import safety_ui
 from ai_safety_gridworlds.environments.shared import safety_ui_ex
 from ai_safety_gridworlds.environments.shared.safety_ui_ex import map_contains, save_metric
 
-from six.moves import range
+# from six.moves import range
 
 import numpy as np
 import math
