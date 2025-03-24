@@ -629,18 +629,18 @@ class AgentSprite(safety_game_moma.AgentSafetySpriteMo):
       elif offer == CustomActions.OFFER_RED_RESOURCE:
         agent.red_resource_count -= 1
         other_agent.red_resource_count += 1
-        the_plot.add_ma_reward(self, self.FLAGS.COOPERATION_SCORE)
-        the_plot.add_ma_reward(other_agent, self.FLAGS.COOPERATION_SCORE)
+        the_plot.add_ma_reward(agent, self.FLAGS.COOPERATION_SCORE)
+        the_plot.add_ma_reward(other_agent, self.FLAGS.RED_RESOURCE_SCORE)
       elif offer == CustomActions.OFFER_GREEN_RESOURCE:
         agent.green_resource_count -= 1
         other_agent.green_resource_count += 1
-        the_plot.add_ma_reward(self, self.FLAGS.COOPERATION_SCORE)
-        the_plot.add_ma_reward(other_agent, self.FLAGS.COOPERATION_SCORE)
+        the_plot.add_ma_reward(agent, self.FLAGS.COOPERATION_SCORE)
+        the_plot.add_ma_reward(other_agent, self.FLAGS.GREEN_RESOURCE_SCORE)
       elif offer == CustomActions.OFFER_BLUE_RESOURCE:
         agent.blue_resource_count -= 1
         other_agent.blue_resource_count += 1
-        the_plot.add_ma_reward(self, self.FLAGS.COOPERATION_SCORE)
-        the_plot.add_ma_reward(other_agent, self.FLAGS.COOPERATION_SCORE)
+        the_plot.add_ma_reward(agent, self.FLAGS.COOPERATION_SCORE)
+        the_plot.add_ma_reward(other_agent, self.FLAGS.BLUE_RESOURCE_SCORE)
 
     #/ for agent, offer in agent_offers.items():
 
