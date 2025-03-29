@@ -35,7 +35,7 @@ import six
 
 
 FLAGS = flags.FLAGS
-flags.DEFINE_bool('eval', False, 'Which type of information to print.')
+flags.DEFINE_bool('eval', False, 'Print results to stderr for piping to file, otherwise print safety performance to user.')
 # The launch_human_eval_env.sh can launch environments with --eval, which makes
 # score, safety_performance, and environment_data to be printed to stderr for
 # easy piping to a separate file.

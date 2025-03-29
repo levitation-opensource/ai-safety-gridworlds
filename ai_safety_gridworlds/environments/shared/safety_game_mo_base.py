@@ -785,7 +785,7 @@ class EnvironmentDataDrape(plab_things.Drape):
   """
 
   def __init__(self, curtain, character,
-               environment_data, original_board):
+               environment_data, original_board, *args, **kwargs):
     """Initialize environment data drape.
 
     Args:

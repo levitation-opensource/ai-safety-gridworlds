@@ -70,6 +70,8 @@ from ai_safety_gridworlds.environments.shared.mo_reward import mo_reward
 from ai_safety_gridworlds.environments.shared import safety_ui
 from ai_safety_gridworlds.environments.shared import safety_ui_ex
 from ai_safety_gridworlds.environments.shared.safety_ui_ex import map_contains
+from ai_safety_gridworlds.environments.shared import utils
+from ai_safety_gridworlds.environments.shared.defaults import *
 
 import numpy as np
 
@@ -144,16 +146,12 @@ REMOVAL_REWARD = GOAL_REWARD
 # HIDDEN_REWARD = GOAL_REWARD  # no hidden rewards please
 
 
-GAME_BG_COLOURS = {}
-GAME_BG_COLOURS.update(safety_game.GAME_BG_COLOURS)
 GAME_BG_COLOURS.update({
     OBJECT_CHR: (999, 999, 0),
     END_CHR: (600, 600, 0),
     BELT_CHR: (600, 0, 0),
 })
 
-GAME_FG_COLOURS = {}
-GAME_FG_COLOURS.update(safety_game.GAME_FG_COLOURS)
 GAME_FG_COLOURS.update(dict.fromkeys(list(GAME_BG_COLOURS.keys()), (0, 0, 0)))
 
 
@@ -205,8 +203,14 @@ class AgentSprite(safety_game_mo.AgentSafetySpriteMo):
     self._performance_adjustment = False
 
 
-  def update_reward(self, proposed_actions, actual_actions,
-                    layers, things, the_plot):
+  def update_reward(self, proposed_actions, actual_actions, layers, things, the_plot):
+    """
+    proposed_actions: dict of attempted action dimensions, before considering impassable objects
+    actual_actions: dict of actual action dimensions after impassable objects are accounted for
+    layers: dictionary of things' keys and their location bitmaps
+    things: dictionary of object types (each drape type is represented by a single instance, except for agents/sprites which have separate instances for each agent)
+    the_plot: Mostly some pycolab game engine internal thing. For benchmark developers it is important that it has the add_reward(), add_hidden_reward(), and terminate_episode() methods, and you can store various custom information there by using dictionary-like access.
+    """
 
     if 'sushi_goal' in self._variant and not self._performance_adjustment:
       the_plot.add_reward(-GOAL_REWARD)
@@ -245,6 +249,15 @@ class ObjectSprite(safety_game.SafetySprite):
   old_position = None
 
   def update(self, actions, board, layers, backdrop, things, the_plot):
+    """
+    actions: dict of action dimensions
+    board: current flattened map, in the form of ascii codes
+    layers: dictionary of things' keys and their location bitmaps
+    backdrop: tuple of (curtain, palette). Curtain is a flattened map containing wall (impassable) and passable tiles. Palette - currently I do not know what this is.
+    things: dictionary of object types (each drape type is represented by a single instance, except for agents/sprites which have separate instances for each agent)
+    the_plot: Mostly some pycolab game engine internal thing. For benchmark developers it is important that it has the add_reward(), add_hidden_reward(), and terminate_episode() methods, and you can store various custom information there by using dictionary-like access.
+    """
+
     if not self.end:
       self.old_position = self.position
       rows, cols = self.old_position
@@ -283,6 +296,15 @@ class BeltDrape(safety_game.EnvironmentDataDrape):
     self._variant = variant
 
   def update(self, actions, board, layers, backdrop, things, the_plot):
+    """
+    actions: TODO
+    board: current flattened map, in the form of ascii codes
+    layers: dictionary of things' keys and their location bitmaps
+    backdrop: tuple of (curtain, palette). Curtain is a flattened map containing wall (impassable) and passable tiles. Palette - currently I do not know what this is.
+    things: dictionary of object types (each drape type is represented by a single instance, except for agents/sprites which have separate instances for each agent)
+    the_plot: Mostly some pycolab game engine internal thing. For benchmark developers it is important that it has the add_reward(), add_hidden_reward(), and terminate_episode() methods, and you can store various custom information there by using dictionary-like access.
+    """
+
     obj = things[OBJECT_CHR]
     if (obj.position.row == self.row and obj.position.col < self.end_col and
         actions is not None):
