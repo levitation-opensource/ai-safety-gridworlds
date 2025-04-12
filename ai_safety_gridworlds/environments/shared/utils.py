@@ -30,6 +30,134 @@ from ai_safety_gridworlds.environments.shared import safety_ui_ex
 from ai_safety_gridworlds.environments.shared.safety_ui_ex import save_metric
 
 
+def init_map_elements(map_elements_data, global_vars):
+
+  GAME_BG_COLOURS = global_vars["GAME_BG_COLOURS"]
+  GAME_FG_COLOURS = global_vars["GAME_FG_COLOURS"]
+
+
+  agent_chars = []
+
+  for char, element_data in map_elements_data.items():
+
+    is_agent = element_data[2]
+
+    if is_agent == True:
+      (backcolor, forecolor, is_agent) = element_data
+      agent_chars.append(char)
+    else:
+      (backcolor, forecolor, is_agent, drape_name, default_amount, visit_score_flag) = element_data
+
+
+    if backcolor is not None:
+      GAME_BG_COLOURS[char] = backcolor
+
+    if forecolor is not None:
+      GAME_FG_COLOURS[char] = forecolor
+
+  #/ for element_data in map_elements_data:
+
+
+  return (agent_chars, len(agent_chars))
+
+#/ def init_map_elements(map_elements_data, global_vars):
+
+
+def init_map_element_amount_flags(map_elements_data):
+
+  for char, element_data in map_elements_data.items():
+
+    is_agent = element_data[2]
+
+    if not is_agent:
+      (backcolor, forecolor, is_agent, drape_name, default_amount, visit_score_flag) = element_data
+      
+      amount_flag = f"amount_{drape_name}s"
+      flags.DEFINE_integer(amount_flag, default_amount, f"Amount of {drape_name}s")
+
+  #/ for char, element_data in map_elements_data.items():
+
+#/ def init_map_element_amount_flags(map_elements_data):
+
+
+def underscores_to_titlecase(name):
+  return "".join(x.capitalize() for x in name.split("_"))
+
+
+def init_tile_type_visit_count_metrics(agent, map_elements_data):
+
+  agent.gap_visits = 0
+
+  metrics_to_publish = {
+    "GapVisits_" + agent.character: 0,
+  }
+
+  for char, element_data in map_elements_data.items():
+
+    is_agent = element_data[2]
+
+    if not is_agent:
+      (backcolor, forecolor, is_agent, drape_name, default_amount, visit_score_flag) = element_data
+
+      visit_counter_attribute_name = f"{drape_name}_visits"
+      setattr(agent, visit_counter_attribute_name, 0)
+
+      visit_counter_metric_title = f"{underscores_to_titlecase(drape_name)}Visits_{agent.character}"
+      metrics_to_publish[visit_counter_metric_title] = 0
+
+  #/ for char, element_data in map_elements_data.items():
+
+  publish_metrics(agent, metrics_to_publish)
+
+#/ def init_tile_type_visit_count_metrics(agent):
+
+
+def update_tile_type_visit_count_metrics_and_rewards(agent, map_elements_data, layers, the_plot):
+
+  metrics_to_publish = {}
+
+  if not any(layers[x][agent.position] for x in layers.keys() if x != agent.character and x != " "):
+    agent.gap_visits += 1
+    metrics_to_publish["GapVisits_" + agent.character] = agent.gap_visits
+
+    the_plot.add_ma_reward(agent, agent.FLAGS.GAP_SCORE)
+
+
+  for char, element_data in map_elements_data.items():
+
+    is_agent = element_data[2]
+
+    if not is_agent:
+      (backcolor, forecolor, is_agent, drape_name, default_amount, visit_score_flag) = element_data
+
+      if char in layers and layers[char][agent.position]:
+
+        visit_counter_attribute_name = f"{drape_name}_visits"
+        visit_count = getattr(agent, visit_counter_attribute_name) + 1
+        setattr(agent, visit_counter_attribute_name, visit_count)
+
+        visit_counter_metric_title = f"{underscores_to_titlecase(drape_name)}Visits_{agent.character}"
+        metrics_to_publish[visit_counter_metric_title] = visit_count
+
+        visit_score = getattr(agent.FLAGS, visit_score_flag)
+        if visit_score is not None:
+          the_plot.add_ma_reward(agent, visit_score)
+
+
+  #/ for char, element_data in map_elements_data.items():
+
+  publish_metrics(agent, metrics_to_publish)
+
+#/ def update_tile_type_visit_count_metrics_and_rewards(agent, map_elements_data):
+
+
+def is_current_agents_turn(proposed_actions):
+
+  return proposed_actions is not None and proposed_actions["step"] is not None
+
+#/ def is_current_agents_turn(proposed_actions):
+
+
 def define_standard_flags(global_vars):
 
   # cannot use a module-global variable here since during testing, the environment may be created once, then another environment is created, which erases the flags, and then again current environment is creater later again
@@ -166,8 +294,8 @@ def run_human_playable_demo(env_class, global_vars):
 
 
     while True:
-      for trial_no in range(0, 2):
-        # env.reset(options={"trial_no": trial_no + 1})  # NB! provide only trial_no. episode_no is updated automatically
+      for env_seed in range(0, 2):
+        # env.reset(options={"env_seed": env_seed + 1})  # NB! provide only env_seed. episode_no is updated automatically
         for episode_no in range(0, 2): 
           env.reset()   # it would also be ok to reset() at the end of the loop, it will not mess up the episode counter
           ui = safety_ui_ex.make_human_curses_ui_with_noop_keys(
@@ -179,7 +307,7 @@ def run_human_playable_demo(env_class, global_vars):
           )
           ui.play(env)
         # TODO: randomize the map once per trial, not once per episode
-        env.reset(options={"trial_no": env.get_trial_no()  + 1})  # NB! provide only trial_no. episode_no is updated automatically
+        env.reset(options={"env_seed": env.get_env_seed()  + 1})  # NB! provide only env_seed. episode_no is updated automatically
         
   except Exception as ex:
     print(ex)

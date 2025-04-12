@@ -63,9 +63,9 @@ WALL_CHR = '#'
 GAP_CHR = ' '
 
 
-MOVEMENT_SCORE = mo_reward({"MOVEMENT": -1})    # TODO: tune
+MOVEMENT_EVENT_SCORE = mo_reward({"MOVEMENT": -1})    # TODO: tune
 
-GAP_SCORE = mo_reward({})        
+GAP_EVENT_SCORE = mo_reward({})        
 
 
 DEFAULT_AMOUNT_AGENTS = 1
