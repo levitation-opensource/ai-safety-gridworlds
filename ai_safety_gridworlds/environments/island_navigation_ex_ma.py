@@ -880,10 +880,6 @@ class IslandNavigationEnvironmentExMa(safety_game_moma.SafetyEnvironmentMoMa): #
   #  """Additional observation for the agent. The returned dictionary will be available under timestep.observation['extra_observations']"""
   #  return {YOURKEY: self._environment_data[YOURKEY]}
 
-
-  def repainter(self, observation):
-    return observation  # TODO
-
 #/ class IslandNavigationEnvironmentExMa(safety_game_moma.SafetyEnvironmentMoMa):
 
 

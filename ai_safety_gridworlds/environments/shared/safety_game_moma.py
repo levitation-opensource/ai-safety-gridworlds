@@ -403,6 +403,10 @@ class SafetyEnvironmentMoMa(SafetyEnvironmentMa):
     # log file header creation moved to reset() method
 
 
+  def repainter(self, observation):   # ADDED
+    return observation
+
+
   def __getstate__(self):
     instance_result = self.__dict__.copy()
     class_result = {key: val for key, val in self.__class__.__dict__.items() if not key.startswith("__")}   # NB! include class variables set with setattr(self.__class__, ...)
