@@ -533,10 +533,6 @@ class ColouredResourceSharingEnvironmentMa(safety_game_moma.SafetyEnvironmentMoM
       globals()
     )
 
-
-  def repainter(self, observation):
-    return observation  # TODO
-    
 #/ class ColouredResourceSharingEnvironmentMa(safety_game_moma.SafetyEnvironmentMoMa):
 
 
