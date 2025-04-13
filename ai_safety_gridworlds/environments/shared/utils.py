@@ -15,6 +15,7 @@
 # ============================================================================
 
 import sys
+import copy
 import traceback
 from absl import flags
 from ast import literal_eval
@@ -27,7 +28,7 @@ from ai_safety_gridworlds.environments.shared.safety_game_moma import LOG_TIMEST
 from ai_safety_gridworlds.environments.shared.mo_reward import mo_reward
 
 from ai_safety_gridworlds.environments.shared import safety_ui_ex
-from ai_safety_gridworlds.environments.shared.safety_ui_ex import save_metric
+from ai_safety_gridworlds.environments.shared.safety_ui_ex import map_contains, save_metric
 
 
 def init_map_elements(map_elements_data, global_vars):
@@ -358,6 +359,8 @@ def init_value_mapping(FLAGS, global_vars):
   }
   """
 
+  # TODO!!! read from custom_map_elements
+
   maps = global_vars["GAME_ART"]
 
   WALL_CHR = global_vars["WALL_CHR"]
@@ -405,6 +408,112 @@ def init_value_mapping(FLAGS, global_vars):
   return value_mapping
 
 #/ def init_value_mapping(FLAGS, GAME_ART, AGENT_CHRS):
+
+
+def init_environment(
+  env_obj, 
+  FLAGS,
+  define_flags, 
+  make_game, 
+  custom_actions, 
+  map_elements_data, 
+  custom_enabled_mo_rewards, 
+  kwargs, 
+  global_vars
+):
+
+  FLAGS = define_flags_and_update_from_kwargs(FLAGS, kwargs, define_flags)
+
+  log_arguments = kwargs
+
+
+  value_mapping = init_value_mapping(FLAGS, global_vars)
+
+
+  level = FLAGS.level
+
+
+  enabled_mo_rewards = list(custom_enabled_mo_rewards) if custom_enabled_mo_rewards else []
+  enabled_mo_rewards += [FLAGS.MOVEMENT_SCORE, FLAGS.GAP_SCORE]   # TODO!!! document these as standard flags
+
+
+  GAME_ART = global_vars["GAME_ART"]
+
+  for char, element_data in map_elements_data.items():
+
+    is_agent = element_data[2]
+
+    if not is_agent:
+      (backcolor, forecolor, is_agent, drape_name, default_amount, visit_score_flag) = element_data
+
+      amount_flag = f"amount_{drape_name}s"
+      if (map_contains(char, GAME_ART[level]) and getattr(FLAGS, amount_flag) > 0):
+        enabled_mo_rewards += [getattr(FLAGS, visit_score_flag)]
+
+  #/ for char, element_data in map_elements_data.items():
+
+
+  if FLAGS.amount_agents > 1:
+    enabled_mo_rewards += [FLAGS.COOPERATION_SCORE]
+
+
+  AGENT_CHRS = global_vars["AGENT_CHRS"]
+  enabled_ma_rewards = {
+    AGENT_CHRS[agent_index]: enabled_mo_rewards for agent_index in range(0, FLAGS.amount_agents)
+  }
+
+
+  action_set = list(safety_game_ma.DEFAULT_ACTION_SET)    # NB! clone since it will be modified
+    
+  if FLAGS.noops:
+    action_set += [safety_game_ma.Actions.NOOP]
+
+
+  if FLAGS.observation_direction_mode == 2 or FLAGS.action_direction_mode == 2:  # 0 - fixed, 1 - relative, depending on last move, 2 - relative, controlled by separate turning actions
+    action_set += [safety_game_ma.Actions.TURN_LEFT_90, safety_game_ma.Actions.TURN_RIGHT_90, safety_game_ma.Actions.TURN_LEFT_180, safety_game_ma.Actions.TURN_RIGHT_180]
+
+  # TODO: direction set should not be based on action set
+  direction_set = safety_game_ma.DEFAULT_ACTION_SET + [safety_game_ma.Actions.NOOP]
+
+
+  kwargs.pop("max_iterations", None)    # will be specified explicitly during call to super.__init__()
+
+
+  GAME_BG_COLOURS = global_vars["GAME_BG_COLOURS"]
+  GAME_FG_COLOURS = global_vars["GAME_FG_COLOURS"]
+
+
+  actions_dict = { 
+    "step": (min(action_set).value, max(action_set).value),
+    "action_direction": (min(direction_set).value, max(direction_set).value),  # action direction is applied after step is taken using previous action direction
+    "observation_direction": (min(direction_set).value, max(direction_set).value),    
+  }
+
+  if custom_actions:
+    actions_dict["custom_action"]= (min(custom_actions).value, max(custom_actions).value)
+
+
+  super(type(env_obj), env_obj).__init__(
+      enabled_ma_rewards,
+      lambda: make_game(env_obj.environment_data, 
+                        environment=env_obj,                          
+                      ),
+      copy.copy(GAME_BG_COLOURS), copy.copy(GAME_FG_COLOURS),
+      actions=actions_dict,
+      continuous_actions={},
+      value_mapping=value_mapping,
+      repainter=env_obj.repainter,
+      max_iterations=FLAGS.max_iterations, 
+      observe_gaps_only_where_other_layers_are_blank=True,  # NB!
+      log_arguments=log_arguments,
+      randomize_agent_actions_order=FLAGS.randomize_agent_actions_order,
+      FLAGS=FLAGS,
+      **kwargs
+    )
+
+  # TODO: store the environment object in the_plot or in environment_data
+
+#/ def init_environment():
 
 
 def make_game_moma(global_vars, environment, environment_data, agent_sprite_class, drape_classes_dict,

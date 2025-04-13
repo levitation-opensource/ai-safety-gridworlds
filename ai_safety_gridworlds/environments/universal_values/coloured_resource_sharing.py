@@ -519,84 +519,24 @@ class ColouredResourceSharingEnvironmentMa(safety_game_moma.SafetyEnvironmentMoM
     Returns: A `Base` python environment interface for this game.
     """
   
-    FLAGS = utils.define_flags_and_update_from_kwargs(FLAGS, kwargs, define_flags)
+    custom_enabled_mo_rewards = []
 
-    log_arguments = kwargs
-
-
-    value_mapping = utils.init_value_mapping(FLAGS, globals())
-
-
-    level = FLAGS.level
-
-
-    enabled_mo_rewards = []
-    enabled_mo_rewards += [FLAGS.MOVEMENT_SCORE, FLAGS.GAP_SCORE]
-
-
-    if (map_contains(RED_RESOURCE_CHR, GAME_ART[level]) and FLAGS.amount_red_resources > 0):
-      enabled_mo_rewards += [FLAGS.RED_RESOURCE_SCORE]
-
-    if (map_contains(GREEN_RESOURCE_CHR, GAME_ART[level]) and FLAGS.amount_green_resources > 0):
-      enabled_mo_rewards += [FLAGS.GREEN_RESOURCE_SCORE]
-
-    if (map_contains(BLUE_RESOURCE_CHR, GAME_ART[level]) and FLAGS.amount_blue_resources > 0):
-      enabled_mo_rewards += [FLAGS.BLUE_RESOURCE_SCORE]
-
-
-    if FLAGS.amount_agents > 1:
-      enabled_mo_rewards += [FLAGS.COOPERATION_SCORE]
-
-
-    enabled_ma_rewards = {
-      AGENT_CHRS[agent_index]: enabled_mo_rewards for agent_index in range(0, FLAGS.amount_agents)
-    }
-
-
-    action_set = list(safety_game_ma.DEFAULT_ACTION_SET)    # NB! clone since it will be modified
-    
-    if FLAGS.noops:
-      action_set += [safety_game_ma.Actions.NOOP]
-
-
-    if FLAGS.observation_direction_mode == 2 or FLAGS.action_direction_mode == 2:  # 0 - fixed, 1 - relative, depending on last move, 2 - relative, controlled by separate turning actions
-      action_set += [safety_game_ma.Actions.TURN_LEFT_90, safety_game_ma.Actions.TURN_RIGHT_90, safety_game_ma.Actions.TURN_LEFT_180, safety_game_ma.Actions.TURN_RIGHT_180]
-
-    # TODO: direction set should not be based on action set
-    direction_set = safety_game_ma.DEFAULT_ACTION_SET + [safety_game_ma.Actions.NOOP]
-
-
-    kwargs.pop("max_iterations", None)    # will be specified explicitly during call to super.__init__()
-
-    super(ColouredResourceSharingEnvironmentMa, self).__init__(
-        enabled_ma_rewards,
-        lambda: make_game(self.environment_data, 
-                          environment=self,                          
-                        ),
-        copy.copy(GAME_BG_COLOURS), copy.copy(GAME_FG_COLOURS),
-        actions={ 
-          "step": (min(action_set).value, max(action_set).value),
-          "action_direction": (min(direction_set).value, max(direction_set).value),  # action direction is applied after step is taken using previous action direction
-          "observation_direction": (min(direction_set).value, max(direction_set).value),
-          "custom_action": (min(CustomActions).value, max(CustomActions).value),
-        },
-        continuous_actions={},
-        value_mapping=value_mapping,
-        repainter=self.repainter,
-        max_iterations=FLAGS.max_iterations, 
-        observe_gaps_only_where_other_layers_are_blank=True,  # NB!
-        log_arguments=log_arguments,
-        randomize_agent_actions_order=FLAGS.randomize_agent_actions_order,
-        FLAGS=FLAGS,
-        **kwargs
-      )
-
-    # TODO: store the environment object in the_plot
+    utils.init_environment(
+      self, 
+      FLAGS,
+      define_flags, 
+      make_game, 
+      CustomActions, 
+      custom_map_elements, 
+      custom_enabled_mo_rewards, 
+      kwargs, 
+      globals()
+    )
 
 
   def repainter(self, observation):
     return observation  # TODO
-
+    
 #/ class ColouredResourceSharingEnvironmentMa(safety_game_moma.SafetyEnvironmentMoMa):
 
 
