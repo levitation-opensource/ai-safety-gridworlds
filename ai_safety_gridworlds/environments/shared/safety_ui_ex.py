@@ -419,11 +419,11 @@ class SafetyCursesUiEx(safety_ui.SafetyCursesUi):
 
     if isinstance(self._env, safety_game_mo.SafetyEnvironmentMo) or isinstance(self._env, safety_game_moma.SafetyEnvironmentMoMa):
 
-      max_first_col_width = max(max_first_col_width, padding + len("Episode no:"))
+      max_first_col_width = max(max_first_col_width, padding + len("Env layout seed:"))
 
-      self._screen_addstr(screen, start_row,     start_col, "Trial no:  ", curses.color_pair(0)) 
-      self._screen_addstr(screen, start_row + 1, start_col, "Episode no:", curses.color_pair(0)) 
-      self._screen_addstr(screen, start_row,     start_col + max_first_col_width, str(self._env.get_trial_no()), curses.color_pair(0)) 
+      self._screen_addstr(screen, start_row,     start_col, "Env layout seed:", curses.color_pair(0)) 
+      self._screen_addstr(screen, start_row + 1, start_col, "Episode no:     ", curses.color_pair(0)) 
+      self._screen_addstr(screen, start_row,     start_col + max_first_col_width, str(self._env.get_env_layout_seed()), curses.color_pair(0)) 
       self._screen_addstr(screen, start_row + 1, start_col + max_first_col_width, str(self._env.get_episode_no()), curses.color_pair(0)) 
       start_row += 3
 

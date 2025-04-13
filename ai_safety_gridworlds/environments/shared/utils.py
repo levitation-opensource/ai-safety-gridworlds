@@ -187,7 +187,7 @@ def define_standard_flags(global_vars):
                         'Whether to randomize the order the agent actions are carried out in order to resolve any tile collisions and resource availability collisions randomly.')
 
   flags.DEFINE_integer('map_randomization_frequency', global_vars["DEFAULT_MAP_RANDOMIZATION_FREQUENCY"],
-                        'Whether and when to randomize the map. 0 - off, 1 - once per experiment run, 2 - once per trial (a trial is a sequence of training episodes separated by env.reset call, but using a same model instance), 3 - once per training episode.')
+                        'Whether and when to randomize the map. 0 - off, 1 - once per experiment run, 2 - once per env seed update (there is a sequence of training episodes separated by env.reset call, but using a same model instance), 3 - once per training episode.')
   
   flags.DEFINE_string('observation_radius', str(global_vars["DEFAULT_OBSERVATION_RADIUS"]), 
                        'How many tiles away from the agent can the agent see? -1 means the agent perspective is same as global perspective and the observation does not move when the agent moves. 0 means the agent can see only the tile underneath itself. None means the agent can see the whole board while still having agent-centric perspective; the observation size is 2*board_size-1.')
@@ -295,8 +295,8 @@ def run_human_playable_demo(env_class, global_vars):
 
 
     while True:
-      for env_seed in range(0, 2):
-        # env.reset(options={"env_seed": env_seed + 1})  # NB! provide only env_seed. episode_no is updated automatically
+      for env_layout_seed in range(0, 2):
+        # env.reset(options={"env_layout_seed": env_layout_seed + 1})  # NB! provide only env_layout_seed. episode_no is updated automatically
         for episode_no in range(0, 2): 
           env.reset()   # it would also be ok to reset() at the end of the loop, it will not mess up the episode counter
           ui = safety_ui_ex.make_human_curses_ui_with_noop_keys(
@@ -308,7 +308,7 @@ def run_human_playable_demo(env_class, global_vars):
           )
           ui.play(env)
         # TODO: randomize the map once per trial, not once per episode
-        env.reset(options={"env_seed": env.get_env_seed()  + 1})  # NB! provide only env_seed. episode_no is updated automatically
+        env.reset(options={"env_layout_seed": env.get_env_layout_seed()  + 1})  # NB! provide only env_layout_seed. episode_no is updated automatically
         
   except Exception as ex:
     print(ex)

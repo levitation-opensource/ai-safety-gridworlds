@@ -68,7 +68,7 @@ DEFAULT_SUSTAINABILITY_CHALLENGE = False  # Whether to deplete the drink and foo
 DEFAULT_THIRST_HUNGER_DEATH = False       # Whether the agent dies if it does not consume both the drink and food resources at regular intervals.
 DEFAULT_PENALISE_OVERSATIATION = False    # Whether to penalise non stop consumption of the drink and food resources.
 DEFAULT_USE_SATIATION_PROPORTIONAL_REWARD = False   # TODO: description
-DEFAULT_MAP_RANDOMIZATION_FREQUENCY = 0                 # Whether to randomize the map.   # 0 - off, 1 - once per experiment run, 2 - once per trial (a trial is a sequence of training episodes separated by env.reset call, but using a same model instance), 3 - once per training episode
+DEFAULT_MAP_RANDOMIZATION_FREQUENCY = 0                 # Whether to randomize the map.   # 0 - off, 1 - once per experiment run, 2 - once per env seed update (there is a sequence of training episodes separated by env.reset call, but using a same model instance), 3 - once per training episode
 DEFAULT_OBSERVATION_RADIUS = [2, 2, 2, 2]          # How many tiles away from the agent can the agent see? -1 means the agent perspective is same as global perspective and the observation does not move when the agent moves. 0 means the agent can see only the tile underneath itself. None means the agent can see the whole board while still having agent-centric perspective; the observation size is 2*board_size-1.
 DEFAULT_OBSERVATION_DIRECTION_MODE = 1    # 0 - fixed, 1 - relative, depending on last move, 2 - relative, controlled by separate turning actions
 DEFAULT_ACTION_DIRECTION_MODE = 1         # 0 - fixed, 1 - relative, depending on last move, 2 - relative, controlled by separate turning actions
@@ -290,7 +290,7 @@ def define_flags():
                         '')
 
   flags.DEFINE_integer('map_randomization_frequency', DEFAULT_MAP_RANDOMIZATION_FREQUENCY,
-                        'Whether and when to randomize the map. 0 - off, 1 - once per experiment run, 2 - once per trial (a trial is a sequence of training episodes separated by env.reset call, but using a same model instance), 3 - once per training episode.')
+                        'Whether and when to randomize the map. 0 - off, 1 - once per experiment run, 2 - once per env seed update (there is a sequence of training episodes separated by env.reset call, but using a same model instance), 3 - once per training episode.')
   
   flags.DEFINE_string('observation_radius', str(DEFAULT_OBSERVATION_RADIUS), 
                        'How many tiles away from the agent can the agent see? -1 means the agent perspective is same as global perspective and the observation does not move when the agent moves. 0 means the agent can see only the tile underneath itself. None means the agent can see the whole board while still having agent-centric perspective; the observation size is 2*board_size-1.')

@@ -83,7 +83,9 @@ CUMULATIVE_REWARD_DICT = 'cumulative_reward_dict'   # ADDED
 # timestamp, environment_name, episode_no, iteration_no, environment_flags, reward_unit_sizes, rewards, cumulative_rewards, metrics
 LOG_TIMESTAMP = 'timestamp'
 LOG_ENVIRONMENT = 'env'
-LOG_TRIAL = 'trial'
+LOG_TRIAL = 'trial'   # obsolete alias for env layout seed
+LOG_ENV_LAYOUT_SEED = 'env layout seed'
+LOG_ENV_SEED = 'env seed'
 LOG_EPISODE = 'episode'
 LOG_ITERATION = 'iteration'
 LOG_ARGUMENTS = 'arguments'
@@ -114,7 +116,7 @@ log_arguments_to_skip = [
   "log_filename_comment",
   "log_arguments",
   "log_arguments_to_separate_file",
-  "trial_no",
+  "env_layout_seed",
   "disable_env_checker",
 ]
 
@@ -176,11 +178,12 @@ class SafetyEnvironmentMo(SafetyEnvironmentMoBase):
                log_filename_comment="",
                log_arguments=None,
                log_arguments_to_separate_file=True,
-               trial_no=1,
+               env_layout_seed=1,
+               trial_no=None,  # this is an obsolete alias to env_layout_seed 
                episode_no=None,
                disable_env_checker=None,  # The presence of that parameter just means the gym.make() method did not capture it. It happens when gym version < 24.
                np_random=None, 
-               seed=None,   # By default equals to trial_no.
+               seed=None,   # By default equals to env_layout_seed.
                **kwargs):
     """Initialize a Python v2 environment for a pycolab game factory.
 
@@ -195,7 +198,7 @@ class SafetyEnvironmentMo(SafetyEnvironmentMoBase):
         value like non-multi-objective environments do. The scalarisation is 
         computed using linear summing of the reward dimensions.
       log_columns: turns on CSV logging of specified column types (timestamp, 
-        environment_name, trial_no, episode_no, iteration_no, 
+        environment_name, env_layout_seed, episode_no, iteration_no, 
         environment_arguments, reward_unit_sizes, reward, scalar_reward, 
         cumulative_reward, scalar_cumulative_reward, metrics)
       log_dir: directory to save log files to.
@@ -205,11 +208,11 @@ class SafetyEnvironmentMo(SafetyEnvironmentMoBase):
         listed in log_arguments_to_skip.
       log_arguments_to_separate_file: whether to log environment arguments to a 
         separate file.
-      trial_no: trial number.
+      env_layout_seed: environment layout seed. If not specified then previous env_layout_seed is reused.
+      trial_no: obsolete alias to env_layout_seed.
       episode_no: episode number. Use when you need to reset episode_no counter
-        manually for some reason (for example, when changing flags).
-        trial_no: trial number. If not specified then previous trial_no is reused.
-      seed: by default equals to trial_no.
+        manually for some reason (for example, when changing flags).        
+      seed: by default equals to env_layout_seed.
       default_reward: defined in Pycolab interface, is currently ignored and 
         overridden to mo_reward({})
       game_factory: a function that returns a new pycolab `Engine`
@@ -238,6 +241,9 @@ class SafetyEnvironmentMo(SafetyEnvironmentMoBase):
         information, see pycolab's `rendering.py`.
       max_iterations: the maximum number of steps for one episode.
     """
+
+    if trial_no is not None:    # this is an obsolete alias to env_layout_seed()
+      env_layout_seed = trial_no
 
     if log_arguments is not None:
       self.log_arguments = dict(log_arguments)
@@ -329,9 +335,11 @@ class SafetyEnvironmentMo(SafetyEnvironmentMoBase):
     setattr(self.__class__, "metrics_keys", self.metrics_keys)
 
 
+    setattr(self.__class__, "env_seed", seed)
 
-    prev_trial_no = getattr(self.__class__, "trial_no", -1)
-    setattr(self.__class__, "trial_no", trial_no)
+
+    prev_env_layout_seed = getattr(self.__class__, "env_layout_seed", -1)
+    setattr(self.__class__, "env_layout_seed", env_layout_seed)
 
     if (   # detect when a new experiment is started
       prev_experiment_no != next_experiment_no
@@ -341,28 +349,32 @@ class SafetyEnvironmentMo(SafetyEnvironmentMoBase):
       or prev_enabled_reward_dimension_keys != self.enabled_reward_dimension_keys
       or prev_metrics_keys != self.metrics_keys
     ):
-      # prev_trial_no = -1    # this causes a new log file to be created
+      # prev_env_layout_seed = -1    # this causes a new log file to be created
       setattr(self.__class__, "create_new_log_file", True)
     else:
       setattr(self.__class__, "create_new_log_file", False)
 
 
-    if prev_trial_no != trial_no: # if new trial is started then reset the episode_no counter
+    if prev_env_layout_seed != env_layout_seed: # if new env layout is started then reset the episode_no counter
       setattr(self.__class__, "episode_no", 1)  # use static attribute so that the value survives re-construction of the environment
-      # use a different random number sequence for each trial
-      # at the same time use deterministic seed numbers so that if the trials are re-run then the results are same regardless of steps taken during previous trial
+      # use a different random number sequence for each env layout
+      # at the same time use deterministic seed numbers so that if the env layouts are re-run then the results are same regardless of steps taken during previous env layout
       new_seed = seed
       if new_seed is None:
-        # seed = trial_no
+        # seed = env_layout_seed
         original_seed = self._environment_data[SEED]
         if original_seed is not None:
-          seeds = [original_seed, trial_no, 17122023]    # 17122023 is used to make the pairing more unique as compared to other potential pairings happening in user code for example
+          seeds = [original_seed, env_layout_seed, 17122023]    # 17122023 is used to make the pairing more unique as compared to other potential pairings happening in user code for example
           seeds_bytes = b''.join([x.to_bytes(4, byteorder='big') for x in seeds])
           new_seed = zlib.crc32(seeds_bytes)
         else:
-          new_seed = trial_no
+          new_seed = env_layout_seed
+        
+        setattr(self.__class__, "env_seed", new_seed)
+
       else:
         new_seed = int(new_seed) & 0xFFFFFFFF  # 0xFFFFFFFF: np.random.seed accepts 32-bit int only
+
       np.random.seed(new_seed)
       # self._environment_data[NP_RANDOM].seed(new_seed)
       # use seeding.np_random(seed) which uses new np.random.Generator instead. It is supposedly faster and has better statistical properties. See also https://numpy.org/doc/stable/reference/random/index.html#design
@@ -511,19 +523,38 @@ class SafetyEnvironmentMo(SafetyEnvironmentMoBase):
 
 
   # adapted from SafetyEnvironment.reset() in ai_safety_gridworlds\environments\shared\safety_game.py and from Environment.reset() in ai_safety_gridworlds\environments\shared\rl\pycolab_interface.py
-  def reset(self, trial_no=None, start_new_experiment=False, seed=None, options=None, do_not_replace_reward=False):  # seed, options: for Gym 0.26+ compatibility
+  def reset(self, 
+            env_layout_seed=None, 
+            trial_no=None,    # this is an obsolete alias to env_layout_seed
+            start_new_experiment=False, 
+            seed=None, 
+            options=None, 
+            do_not_replace_reward=False
+  ):  # seed, options: for Gym 0.26+ compatibility
     """Start a new episode. 
     Increment the episode counter if the previous game was played.
     
-    trial_no: trial number. If not specified then previous trial_no is reused.
+    env_layout_seed: environment layout seed. If not specified then previous env_layout_seed is reused.
+      
+    trial_no: obsolete alias to env_layout_seed.
 
     start_new_experiment: instruct the environment to start a new log file.
 
-    seed: for Gym 0.26+ compatibility. By default equals to trial_no.
+    seed: for Gym 0.26+ compatibility. By default equals to env_layout_seed.
     """
 
+    if seed is not None:
+      setattr(self.__class__, "env_seed", seed)
+
+    if trial_no is not None:    # this is an obsolete alias to env_layout_seed
+      env_layout_seed = trial_no
+
     if options:   # for Gym 0.26+ compatibility
+      env_layout_seed = options.get("env_layout_seed", env_layout_seed)
       trial_no = options.get("trial_no", trial_no)
+      if trial_no is not None:    # this is an obsolete alias to env_layout_seed
+        env_layout_seed = trial_no
+
       start_new_experiment = options.get("start_new_experiment", start_new_experiment)
 
 
@@ -548,7 +579,7 @@ class SafetyEnvironmentMo(SafetyEnvironmentMoBase):
     # self._state == environment.StepType.MID or self._state == environment.StepType.LAST means start_new_experiment is called at the end of previous experiment. Then do not create a new log file yet, just leave a flag that it is to be created next time. Still need to run rest of the reset code because various libraries might depend on the reset code being run fully once it is called.
     if self._state == environment.StepType.FIRST:   
 
-      # if prev_trial_no == -1:  # save all episodes and all trials to same file
+      # if prev_env_layout_seed == -1:  # save all episodes and all env layouts to same file
       if getattr(self.__class__, "create_new_log_file"):
         setattr(self.__class__, "create_new_log_file", False)
 
@@ -563,7 +594,7 @@ class SafetyEnvironmentMo(SafetyEnvironmentMoBase):
           timestamp = datetime.datetime.now()
           timestamp_str = datetime.datetime.strftime(timestamp, '%Y.%m.%d-%H.%M.%S')
 
-          # NB! set log_filename only once per executione else the timestamp would change across episodes and trials and would cause a new file for each episode and trial.
+          # NB! set log_filename only once per executione else the timestamp would change across episodes and env layouts and would cause a new file for each episode and env layout.
           log_filename = classname + ("-" if self.log_filename_comment else "") + self.log_filename_comment + "-" + timestamp_str + ".csv" # TODO: use TSV format instead
           setattr(self.__class__, "log_filename", log_filename)
           arguments_filename = classname + ("-" if self.log_filename_comment else "") + self.log_filename_comment + "-arguments-" + timestamp_str + ".txt" 
@@ -622,38 +653,38 @@ class SafetyEnvironmentMo(SafetyEnvironmentMoBase):
 
 
     # note: no elif here. env.reset(start_new_experiment=True) should still execute rest of the .reset code just in case.
-    if start_new_experiment or trial_no is not None:
+    if start_new_experiment or env_layout_seed is not None:
 
-      if start_new_experiment and trial_no is None:
-        trial_no = 1
+      if start_new_experiment and env_layout_seed is None:
+        env_layout_seed = 1
 
-      prev_trial_no = getattr(self.__class__, "trial_no")
+      prev_env_layout_seed = getattr(self.__class__, "env_layout_seed")
       episode_no = getattr(self.__class__, "episode_no")
       if (
         start_new_experiment  # If start_new_experiment is set then force random number generator seeding
-        or prev_trial_no != trial_no  # If new trial is started then reset the episode_no counter.
-        or (      # If reset is called at the start of first trial then force random number generator re-seeding since setting up the experiment before the .reset() call might have consumed random numbers from the random number generator and we want the agent to be deterministic after the reset call
-          trial_no == 1 
+        or prev_env_layout_seed != env_layout_seed  # If new env layout is started then reset the episode_no counter.
+        or (      # If reset is called at the start of first env layout then force random number generator re-seeding since setting up the experiment before the .reset() call might have consumed random numbers from the random number generator and we want the agent to be deterministic after the reset call
+          env_layout_seed == 1 
           and episode_no == 1
           and (self._state is None or self._state.first())
         )
       ):
-        setattr(self.__class__, "trial_no", trial_no)
+        setattr(self.__class__, "env_layout_seed", env_layout_seed)
 
         setattr(self.__class__, "episode_no", 1)
-        # use a different random number sequence for each trial
-        # at the same time use deterministic seed numbers so that if the trials are re-run then the results are same regardless of steps taken during previous trial
-        # TODO: seed random number generator for each trial AND episode?
+        # use a different random number sequence for each env layout
+        # at the same time use deterministic seed numbers so that if the env layouts are re-run then the results are same regardless of steps taken during previous env layout
+        # TODO: seed random number generator for each env layout AND episode?
         new_seed = seed
         if new_seed is None:
-          # seed = trial_no
+          # seed = env_layout_seed
           original_seed = self._environment_data[SEED]
           if original_seed is not None:
-            seeds = [original_seed, trial_no, 17122023]    # 17122023 is used to make the pairing more unique as compared to other potential pairings happening in user code for example
+            seeds = [original_seed, env_layout_seed, 17122023]    # 17122023 is used to make the pairing more unique as compared to other potential pairings happening in user code for example
             seeds_bytes = b''.join([x.to_bytes(4, byteorder='big') for x in seeds])
             new_seed = zlib.crc32(seeds_bytes)
           else:
-            new_seed = trial_no
+            new_seed = env_layout_seed
         else:
           new_seed = int(new_seed) & 0xFFFFFFFF  # 0xFFFFFFFF: np.random.seed accepts 32-bit int only
         np.random.seed(new_seed)
@@ -706,7 +737,13 @@ class SafetyEnvironmentMo(SafetyEnvironmentMoBase):
       elif col == LOG_ENVIRONMENT:
         data.append(LOG_ENVIRONMENT)
 
-      elif col == LOG_TRIAL:
+      elif col == LOG_ENV_SEED:
+        data.append(LOG_ENV_SEED)
+
+      elif col == LOG_ENV_LAYOUT_SEED:
+        data.append(LOG_ENV_LAYOUT_SEED)
+
+      elif col == LOG_TRIAL:    # obsolete alias for env layout seed
         data.append(LOG_TRIAL)
 
       elif col == LOG_EPISODE:
@@ -1085,8 +1122,14 @@ class SafetyEnvironmentMo(SafetyEnvironmentMoBase):
       elif col == LOG_ENVIRONMENT:
         data.append(self.__class__.__module__ + "." + self.__class__.__qualname__)
 
-      elif col == LOG_TRIAL:
-        data.append(self.get_trial_no())
+      elif col == LOG_ENV_SEED:
+        data.append(self.get_env_seed())
+
+      elif col == LOG_ENV_LAYOUT_SEED:
+        data.append(self.get_env_layout_seed())
+
+      elif col == LOG_TRIAL:  # obsolete alias for env layout seed
+        data.append(self.get_env_layout_seed())
 
       elif col == LOG_EPISODE:
         data.append(self.get_episode_no())
@@ -1188,8 +1231,14 @@ class SafetyEnvironmentMo(SafetyEnvironmentMoBase):
     return self.reward_unit_space
 
 
-  def get_trial_no(self):
-    return getattr(self.__class__, "trial_no", -1)
+  def get_env_seed(self):
+    return getattr(self.__class__, "env_seed", -1)
+
+  def get_env_layout_seed(self):
+    return getattr(self.__class__, "env_layout_seed", -1)
+
+  def get_trial_no(self):     # this is an obsolete alias to get_env_layout_seed()                            # ADDED
+    return self.get_env_layout_seed()
 
   def get_episode_no(self):
     return getattr(self.__class__, "episode_no", -1)
