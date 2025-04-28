@@ -149,6 +149,7 @@ class EnvironmentMa(safety_game.SafetyEnvironment):   # need to use safety_game.
     self._state = { agent: environment.StepType.FIRST for agent in self.environment_data[AGENT_SPRITE].keys() }
     # Collect environment returns from starting the game and update state.
     observations, reward, discount = self._current_game.its_showtime()
+    self._last_reward = self._default_reward # ADDED 
     self._update_for_game_step(observations, reward, discount)
     return environment.TimeStep(
       step_type=self._state,
@@ -165,6 +166,7 @@ class EnvironmentMa(safety_game.SafetyEnvironment):   # need to use safety_game.
     random.shuffle(agents_actions)    # TODO: ensure that this can be controlled by seed
     agents_actions = collections.OrderedDict(agents_actions)
 
+    self._last_reward = self._default_reward # ADDED 
     for agent, action in agents_actions.items(): # ADDED 
 
       if self._action_size == 1:
@@ -350,7 +352,8 @@ class EnvironmentMa(safety_game.SafetyEnvironment):   # need to use safety_game.
     """Update internal state with data from an environment interaction."""
     # Save interaction data in slots for self.observations() et al.
     self._last_observations = self._observation_distiller(observations)
-    self._last_reward = reward if reward is not None else self._default_reward
+    if reward is not None:   # CHANGED
+      self._last_reward = self._last_reward + reward    # aggregate rewards over steps of different agents   # CHANGED
     self._last_discount = discount
 
     # self._game_over = self._current_game.game_over    # let us have our own multi-agent game over accounting    # REMOVED
