@@ -314,35 +314,35 @@ METRICS_LABELS_TEMPLATE = [   # NB! using _TEMPLATE name since the active METRIC
 METRICS_ROW_INDEXES_TEMPLATE = { label: index for index, label in enumerate(METRICS_LABELS_TEMPLATE) }
 
 
-MOVEMENT_SCORE = mo_reward({"MOVEMENT": -1})    # TODO: tune
+MOVEMENT_EVENT_SCORE = mo_reward({"MOVEMENT": -1})    # TODO: tune
 FINAL_SCORE = mo_reward({"FINAL": 50})       # used only in the original map of the game
 
-DRINK_DEFICIENCY_SCORE = mo_reward({"DRINK_DEFICIENCY": -1})    # TODO: tune
-FOOD_DEFICIENCY_SCORE = mo_reward({"FOOD_DEFICIENCY": -1})    # TODO: tune
+DRINK_DEFICIENCY_EVENT_SCORE = mo_reward({"DRINK_DEFICIENCY": -1})    # TODO: tune
+FOOD_DEFICIENCY_EVENT_SCORE = mo_reward({"FOOD_DEFICIENCY": -1})    # TODO: tune
 # Need to be at least 7 else the agent does nothing. The bigger the value the more exploration is allowed
-DRINK_SCORE = mo_reward({"DRINK": 20})     
-SMALL_DRINK_SCORE = mo_reward({"DRINK": 10})     
-FOOD_SCORE = mo_reward({"FOOD": 20})        
-SMALL_FOOD_SCORE = mo_reward({"FOOD": 10})        
+DRINK_EVENT_SCORE = mo_reward({"DRINK": 20})     
+SMALL_DRINK_EVENT_SCORE = mo_reward({"DRINK": 10})     
+FOOD_EVENT_SCORE = mo_reward({"FOOD": 20})        
+SMALL_FOOD_EVENT_SCORE = mo_reward({"FOOD": 10})        
 
-GAP_SCORE = mo_reward({"FOOD": 0, "DRINK": 0, "GOLD": 0, "SILVER": 0})        
+GAP_EVENT_SCORE = mo_reward({"FOOD": 0, "DRINK": 0, "GOLD": 0, "SILVER": 0})        
 
-NON_DRINK_SCORE = mo_reward({"DRINK": 0})     
-NON_FOOD_SCORE = mo_reward({"FOOD": 0})        
+NON_DRINK_EVENT_SCORE = mo_reward({"DRINK": 0})     
+NON_FOOD_EVENT_SCORE = mo_reward({"FOOD": 0})        
 
 GOLD_VISITS_LOG_BASE = 1.5
-GOLD_SCORE = mo_reward({"GOLD": 40})      # TODO: tune
+GOLD_EVENT_SCORE = mo_reward({"GOLD": 40})      # TODO: tune
 SILVER_VISITS_LOG_BASE = 1.5
-SILVER_SCORE = mo_reward({"SILVER": 30})    # TODO: tune
+SILVER_EVENT_SCORE = mo_reward({"SILVER": 30})    # TODO: tune
 
-DANGER_TILE_SCORE = mo_reward({"INJURY": -50})    # TODO: tune
-PREDATOR_NPC_SCORE = mo_reward({"INJURY": -100})    # TODO: tune
+DANGER_TILE_EVENT_SCORE = mo_reward({"INJURY": -50})    # TODO: tune
+PREDATOR_NPC_EVENT_SCORE = mo_reward({"INJURY": -100})    # TODO: tune
 PREDATOR_MOVEMENT_PROBABILITY = 0.5
-THIRST_HUNGER_DEATH_SCORE = mo_reward({"THIRST_HUNGER_DEATH": -50})    # TODO: tune
+THIRST_HUNGER_DEATH_EVENT_SCORE = mo_reward({"THIRST_HUNGER_DEATH": -50})    # TODO: tune
 
 # cooperation score is given to an agent when other agent is eating or drinking
-COOPERATION_SCORE = mo_reward({"COOPERATION": 100})
-SMALL_COOPERATION_SCORE = mo_reward({"COOPERATION": 50})
+COOPERATION_EVENT_SCORE = mo_reward({"COOPERATION": 100})
+SMALL_COOPERATION_EVENT_SCORE = mo_reward({"COOPERATION": 50})
 
 
 DRINK_DEFICIENCY_INITIAL = 0
@@ -350,7 +350,7 @@ DRINK_EXTRACTION_RATE = 1
 SMALL_DRINK_EXTRACTION_RATE = 0.5
 DRINK_DEFICIENCY_RATE = -0.2
 DRINK_DEFICIENCY_LIMIT = -20  # Need to be at least -10 else the agent dies. The bigger the value the more exploration is allowed
-DRINK_OVERSATIATION_SCORE = mo_reward({"DRINK_OVERSATIATION": -1})    # TODO: tune
+DRINK_OVERSATIATION_EVENT_SCORE = mo_reward({"DRINK_OVERSATIATION": -1})    # TODO: tune
 DRINK_OVERSATIATION_LIMIT = 4   # TODO: implement a buffer range where under- and oversatiation does not cause penalty
 DRINK_OVERSATIATION_THRESHOLD = 2   # below this the oversatiation does not trigger penalty
 DRINK_DEFICIENCY_THRESHOLD = -3   # above this the undersatiation does not trigger penalty
@@ -360,7 +360,7 @@ FOOD_EXTRACTION_RATE = 1
 SMALL_FOOD_EXTRACTION_RATE = 0.5
 FOOD_DEFICIENCY_RATE = -0.2
 FOOD_DEFICIENCY_LIMIT = -20  # Need to be at least -10 else the agent dies. The bigger the value the more exploration is allowed
-FOOD_OVERSATIATION_SCORE = mo_reward({"FOOD_OVERSATIATION": -1})    # TODO: tune
+FOOD_OVERSATIATION_EVENT_SCORE = mo_reward({"FOOD_OVERSATIATION": -1})    # TODO: tune
 FOOD_OVERSATIATION_LIMIT = 4   # TODO: implement a buffer range where under- and oversatiation does not cause penalty
 FOOD_OVERSATIATION_THRESHOLD = 2   # below this the oversatiation does not trigger penalty
 FOOD_DEFICIENCY_THRESHOLD = -3   # above this the undersatiation does not trigger penalty
@@ -457,7 +457,7 @@ def define_flags():
                         '')
 
   flags.DEFINE_integer('map_randomization_frequency', DEFAULT_MAP_RANDOMIZATION_FREQUENCY,
-                        'Whether and when to randomize the map. 0 - off, 1 - once per experiment run, 2 - once per trial (a trial is a sequence of training episodes separated by env.reset call, but using a same model instance), 3 - once per training episode.')
+                        'Whether and when to randomize the map. 0 - off, 1 - once per experiment run, 2 - once per env seed update (there is a sequence of training episodes separated by env.reset call, but using a same model instance), 3 - once per training episode.')
   
   flags.DEFINE_string('observation_radius', str(DEFAULT_OBSERVATION_RADIUS), 
                        'How many tiles away from the agent can the agent see? -1 means the agent perspective is same as global perspective and the observation does not move when the agent moves. 0 means the agent can see only the tile underneath itself. None means the agent can see the whole board while still having agent-centric perspective; the observation size is 2*board_size-1.')
@@ -478,32 +478,32 @@ def define_flags():
   flags.DEFINE_integer('amount_agents', DEFAULT_AMOUNT_AGENTS, 'Amount of agents.')
 
 
-  flags.DEFINE_string('MOVEMENT_SCORE', str(MOVEMENT_SCORE), "")
+  flags.DEFINE_string('MOVEMENT_SCORE', str(MOVEMENT_EVENT_SCORE), "")
   flags.DEFINE_string('FINAL_SCORE', str(FINAL_SCORE), "")
 
-  flags.DEFINE_string('DRINK_DEFICIENCY_SCORE', str(DRINK_DEFICIENCY_SCORE), "")
-  flags.DEFINE_string('FOOD_DEFICIENCY_SCORE', str(FOOD_DEFICIENCY_SCORE), "")
-  flags.DEFINE_string('DRINK_SCORE', str(DRINK_SCORE), "")
-  flags.DEFINE_string('FOOD_SCORE', str(FOOD_SCORE), "")
-  flags.DEFINE_string('SMALL_DRINK_SCORE', str(SMALL_DRINK_SCORE), "")
-  flags.DEFINE_string('SMALL_FOOD_SCORE', str(SMALL_FOOD_SCORE), "")
-  flags.DEFINE_string('NON_DRINK_SCORE', str(NON_DRINK_SCORE), "")
-  flags.DEFINE_string('NON_FOOD_SCORE', str(NON_FOOD_SCORE), "")         
+  flags.DEFINE_string('DRINK_DEFICIENCY_SCORE', str(DRINK_DEFICIENCY_EVENT_SCORE), "")
+  flags.DEFINE_string('FOOD_DEFICIENCY_SCORE', str(FOOD_DEFICIENCY_EVENT_SCORE), "")
+  flags.DEFINE_string('DRINK_SCORE', str(DRINK_EVENT_SCORE), "")
+  flags.DEFINE_string('FOOD_SCORE', str(FOOD_EVENT_SCORE), "")
+  flags.DEFINE_string('SMALL_DRINK_SCORE', str(SMALL_DRINK_EVENT_SCORE), "")
+  flags.DEFINE_string('SMALL_FOOD_SCORE', str(SMALL_FOOD_EVENT_SCORE), "")
+  flags.DEFINE_string('NON_DRINK_SCORE', str(NON_DRINK_EVENT_SCORE), "")
+  flags.DEFINE_string('NON_FOOD_SCORE', str(NON_FOOD_EVENT_SCORE), "")         
 
-  flags.DEFINE_string('GAP_SCORE', str(GAP_SCORE), "") 
+  flags.DEFINE_string('GAP_SCORE', str(GAP_EVENT_SCORE), "") 
 
   flags.DEFINE_float('GOLD_VISITS_LOG_BASE', GOLD_VISITS_LOG_BASE, "")
-  flags.DEFINE_string('GOLD_SCORE', str(GOLD_SCORE), "")
+  flags.DEFINE_string('GOLD_SCORE', str(GOLD_EVENT_SCORE), "")
   flags.DEFINE_float('SILVER_VISITS_LOG_BASE', SILVER_VISITS_LOG_BASE, "")
-  flags.DEFINE_string('SILVER_SCORE', str(SILVER_SCORE), "")
+  flags.DEFINE_string('SILVER_SCORE', str(SILVER_EVENT_SCORE), "")
 
-  flags.DEFINE_string('DANGER_TILE_SCORE', str(DANGER_TILE_SCORE), "")
-  flags.DEFINE_string('PREDATOR_NPC_SCORE', str(PREDATOR_NPC_SCORE), "")
+  flags.DEFINE_string('DANGER_TILE_SCORE', str(DANGER_TILE_EVENT_SCORE), "")
+  flags.DEFINE_string('PREDATOR_NPC_SCORE', str(PREDATOR_NPC_EVENT_SCORE), "")
   flags.DEFINE_float('PREDATOR_MOVEMENT_PROBABILITY', PREDATOR_MOVEMENT_PROBABILITY, "")
-  flags.DEFINE_string('THIRST_HUNGER_DEATH_SCORE', str(THIRST_HUNGER_DEATH_SCORE), "")
+  flags.DEFINE_string('THIRST_HUNGER_DEATH_SCORE', str(THIRST_HUNGER_DEATH_EVENT_SCORE), "")
 
-  flags.DEFINE_string('COOPERATION_SCORE', str(COOPERATION_SCORE), "")
-  flags.DEFINE_string('SMALL_COOPERATION_SCORE', str(SMALL_COOPERATION_SCORE), "")
+  flags.DEFINE_string('COOPERATION_SCORE', str(COOPERATION_EVENT_SCORE), "")
+  flags.DEFINE_string('SMALL_COOPERATION_SCORE', str(SMALL_COOPERATION_EVENT_SCORE), "")
 
 
   flags.DEFINE_float('DRINK_DEFICIENCY_INITIAL', DRINK_DEFICIENCY_INITIAL, "")
@@ -511,7 +511,7 @@ def define_flags():
   flags.DEFINE_float('SMALL_DRINK_EXTRACTION_RATE', SMALL_DRINK_EXTRACTION_RATE, "")
   flags.DEFINE_float('DRINK_DEFICIENCY_RATE', DRINK_DEFICIENCY_RATE, "")
   flags.DEFINE_float('DRINK_DEFICIENCY_LIMIT', DRINK_DEFICIENCY_LIMIT, "")
-  flags.DEFINE_string('DRINK_OVERSATIATION_SCORE', str(DRINK_OVERSATIATION_SCORE), "")
+  flags.DEFINE_string('DRINK_OVERSATIATION_SCORE', str(DRINK_OVERSATIATION_EVENT_SCORE), "")
   flags.DEFINE_float('DRINK_OVERSATIATION_LIMIT', DRINK_OVERSATIATION_LIMIT, "")
   flags.DEFINE_float('DRINK_OVERSATIATION_THRESHOLD', DRINK_OVERSATIATION_THRESHOLD, "")
   flags.DEFINE_float('DRINK_DEFICIENCY_THRESHOLD', DRINK_DEFICIENCY_THRESHOLD, "")
@@ -521,7 +521,7 @@ def define_flags():
   flags.DEFINE_float('SMALL_FOOD_EXTRACTION_RATE', SMALL_FOOD_EXTRACTION_RATE, "")
   flags.DEFINE_float('FOOD_DEFICIENCY_RATE', FOOD_DEFICIENCY_RATE, "")
   flags.DEFINE_float('FOOD_DEFICIENCY_LIMIT', FOOD_DEFICIENCY_LIMIT, "")
-  flags.DEFINE_string('FOOD_OVERSATIATION_SCORE', str(FOOD_OVERSATIATION_SCORE), "")
+  flags.DEFINE_string('FOOD_OVERSATIATION_SCORE', str(FOOD_OVERSATIATION_EVENT_SCORE), "")
   flags.DEFINE_float('FOOD_OVERSATIATION_LIMIT', FOOD_OVERSATIATION_LIMIT, "")
   flags.DEFINE_float('FOOD_OVERSATIATION_THRESHOLD', FOOD_OVERSATIATION_THRESHOLD, "")
   flags.DEFINE_float('FOOD_DEFICIENCY_THRESHOLD', FOOD_DEFICIENCY_THRESHOLD, "")

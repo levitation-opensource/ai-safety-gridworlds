@@ -1085,7 +1085,7 @@ def make_safety_game(
   else:
     environment_class = environment.__class__.__module__ + "." + environment.__class__.__qualname__
     # last_randomization_done_for_environment = map_randomizations_per_environment.get(environment_class)
-    trial_no = environment.get_trial_no()
+    env_layout_seed = environment.get_env_layout_seed()
     episode_no = environment.get_episode_no()
 
     # need to consider tile_type_counts in randomization_key since tests create different environment configurations in one go
@@ -1097,10 +1097,10 @@ def make_safety_game(
     # NB! if np_random argument is provided then that is not considered here for randomization_key calculation
     if map_randomization_frequency == 1:    # 1 - once per experiment run
       randomization_key = environment_class + "|" + str(seed) + "|" + str(tile_type_counts_key) + "|" + ascii_art_key + "|" + str(map_width) + "|" + str(map_height)
-    elif map_randomization_frequency == 2:  # 2 - once per trial (a trial is a sequence of training episodes separated by env.reset call, but using a same model instance)
-      randomization_key = environment_class + "|" + str(seed) + "|" + str(trial_no) + "|" + str(tile_type_counts_key) + "|" + ascii_art_key + "|" + str(map_width) + "|" + str(map_height)
+    elif map_randomization_frequency == 2:  # 2 - once per env seed update (there is a sequence of training episodes separated by env.reset call, but using a same model instance)
+      randomization_key = environment_class + "|" + str(seed) + "|" + str(env_layout_seed) + "|" + str(tile_type_counts_key) + "|" + ascii_art_key + "|" + str(map_width) + "|" + str(map_height)
     elif map_randomization_frequency == 3:  # 3 - once per training episode
-      randomization_key = environment_class + "|" + str(seed) + "|" + str(trial_no) + "|" + str(episode_no) + "|" + str(tile_type_counts_key) + "|" + ascii_art_key + "|" + str(map_width) + "|" + str(map_height)
+      randomization_key = environment_class + "|" + str(seed) + "|" + str(env_layout_seed) + "|" + str(episode_no) + "|" + str(tile_type_counts_key) + "|" + ascii_art_key + "|" + str(map_width) + "|" + str(map_height)
     else:
       raise ValueError("map_randomization_frequency")
 
