@@ -681,8 +681,14 @@ class GridworldGymEnv(gym.Env):
     def get_step_no(self):                           # ADDED
         return self._env._current_game.the_plot.frame
 
-    def get_trial_no(self):                             # ADDED
-        return self._env.get_trial_no()
+    def get_env_seed(self):                           # ADDED
+        return self._env.get_env_seed()
+
+    def get_env_layout_seed(self):                             # ADDED
+        return self._env.get_env_layout_seed()
+
+    def get_trial_no(self):     # this is an obsolete alias to get_env_layout_seed()                            # ADDED
+        return self.get_env_layout_seed()
 
     def get_episode_no(self):                           # ADDED
         return self._env.get_episode_no()
