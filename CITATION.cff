@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "Attribution Requirement: If you use this benchmark suite, please cite the source as follows:"
+authors:
+- family-names: "Pihlakas"
+  given-names: "Roland"
+  orcid: "https://orcid.org/0009-0006-4882-4166"
+- family-names: "Pyykkö"
+  given-names: "Joel"
+  orcid: "https://orcid.org/0000-0000-0000-0000"
+title: "From homeostasis to resource sharing: Biologically and economically aligned multi-objective multi-agent AI safety benchmarks"
+version: 0.9.0
+doi: 10.48550/arXiv.2410.00081
+date-released: 2024-09-30
+url: "https://github.com/aintelope/biological-compatibility-benchmarks"
